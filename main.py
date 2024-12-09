@@ -17,16 +17,22 @@ from telegram.ext import (
   ConversationHandler,
   CallbackQueryHandler,
 )
-from pymongo import MongoClient
 
+from recruiter import *
+import psycopg2
 
-# MongoDB setup
-# sudo service mongod start
-client = MongoClient("localhost", 27017)
-db = client['TalentHiveBot']
-jobseekers = db['jobseekers']
-recruiters = db['recruiters']
-companies = db['companies']
+conn = psycopg2.connect(
+  host="localhost",
+  database="talenthive",
+  user="postgres",
+  password="postgres",
+  port="5432"
+)
+cursor = conn.cursor()
+
+cursor.execute("SELECT * FROM users")
+records = cursor.fetchall()
+print(records)
 
 # Enable logging
 logging.basicConfig(
@@ -35,13 +41,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # States
-ROLE_DECISION, J_NAME, J_EMAIL, J_SKILLS, J_EXPERIENCE, J_LOCATION, J_CV, J_REGISTER, J_USERNAME, J_PREFERENCES, J_SUBSCRIBED_ALERTS, R_NAME = range(12)
+ROLE_DECISION, J_NAME, J_EMAIL, J_SKILLS, J_EXPERIENCE, J_LOCATION, J_CV, J_REGISTER, J_USERNAME, J_PREFERENCES, J_SUBSCRIBED_ALERTS = range(11)
 # START, CANCEL, SELECT, ADD, DELETE, EDIT = range(6)
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
   id = update.message.chat.id
-  jobseeker = jobseekers.find_one({"id": id})
-  recruiter = recruiters.find_one({"id": id})
+  user = cursor.execute("SELECT * FROM users WHERE id = %s", (id,))
+  print(f"User: {user}")
   
   guestKeyboard = [
     [InlineKeyboardButton('Recruiter', callback_data='recruiter')],
@@ -60,9 +66,16 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     [InlineKeyboardButton('...', callback_data='...')],
   ]
   
-  if jobseeker:
+  if not user:
     await update.message.reply_html(
-      text=f"<b>Hello {jobseeker.get('name')}, Welcome to Talent Hive Bot!</b>\n\n"
+      '<b>Hello, Welcome to Talent Bot!</b>\n\n'
+      '<b>Are you a recruiter or a job seeker?</b>\n\n',
+      reply_markup=InlineKeyboardMarkup(guestKeyboard),
+    )
+    return ROLE_DECISION
+  elif user.role == 1:
+    await update.message.reply_html(
+      text=f"<b>Hello {user.name}, Welcome to Talent Hive Bot!</b>\n\n"
             "<b>My Profile</b>:  to register and update your profile\n\n"
             "<b>My Applications</b>:  track the status of all your applications\n\n"
             "<b>Job Notifications</b>:  to filter and get the jobs you want straight from the Bot\n\n"
@@ -70,18 +83,16 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "<b>Help</b>:  get answers to your questions about Talent Hive\n\n",
       reply_markup=InlineKeyboardMarkup(jobseekerKeyboard),
     )
-  elif recruiter:
+  elif user.role == 2:
     await update.message.reply_html(
-      text=f"<b>Hello {recruiter.get('name')}, Welcome to Talent Hive Bot!</b>\n"
+      text=f"<b>Hello {user.name}, Welcome to Talent Hive Bot!</b>\n"
     )
   else:
     await update.message.reply_html(
-      '<b>Hello, Welcome to Talent Bot!</b>\n\n'
-      '<b>Are you a recruiter or a job seeker?</b>\n\n',
-      reply_markup=InlineKeyboardMarkup(guestKeyboard),
+      '<b>Who the fuck are ya?</b>\n\n'
     )
   
-  return ROLE_DECISION
+    # return ROLE_DECISION
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
   await context.bot.send_message(
@@ -111,14 +122,14 @@ async def role_decision(update: Update, context: ContextTypes.DEFAULT_TYPE):
   
   if decision == 'jobseeker':
     await query.edit_message_text(
-      text=f"<b>Registration</b>\n\n"
+      text=f"<b>Job Seeker Registration</b>\n\n"
             "<b>Please enter your name: </b>",
       parse_mode="HTML"
     )
     return J_NAME
   elif decision == 'recruiter':
     await query.edit_message_text(
-      text=f"<b>Registration</b>\n\n"
+      text=f"<b>Recruiter Registration</b>\n\n"
             "<b>Please enter your name: </b>",
       parse_mode="HTML"
     )
@@ -160,46 +171,24 @@ async def j_experience(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def j_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
   context.user_data['j_location'] = update.message.text
-  
-  # await update.message.reply_html(
-  #   text=f"<b>Please upload your cv: </b>\n"
-  #         "<b>or send /skip</b>",
-  # )
+  print(context.user_data)
   
   return J_REGISTER
 
-# async def j_cv(update: Update, context: ContextTypes.DEFAULT_TYPE):
-#   context.user_data['j_cv'] = update.message.text
-  
-#   await update.message.reply_html(
-#     text=f"<b>CV uploaded</b>\n"
-#   )
-  
-#   return J_REGISTER
-
-# async def skip_cv_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):  
-#   await update.message.reply_html(
-#     text=f"<b>CV skipped</b>\n"
-#   )
-  
-#   return J_REGISTER
-
 async def j_register(update: Update, context: ContextTypes.DEFAULT_TYPE):
-  jobseekers.insert_one({
-    "id": context.user_data['j_id'],
-    "name": context.user_data['j_name'],
-    "email": context.user_data['j_email'],
-    "skills": context.user_data['j_skills'],
-    "experience": context.user_data['j_experience'],
-    "location": context.user_data['j_location'],
-    "cv": "PLACEHOLDER",
-    "username": "PLACEHOLDER",
-    "preferences": "PLACEHOLDER",
-    "subscribed_alerts": "PLACEHOLDER",
-  })
+  print("here...")
   
+  summary = (f"<b>Profile \n\n</b>"
+                    f"<b>ID: </b> {context.user_data['j_id']}\n"
+                    f"<b>Name: </b> {context.user_data['j_name']}\n"
+                    f"<b>Email: </b> {context.user_data['j_email']}\n"
+                    f"<b>Skills: </b> {context.user_data['j_skills']}\n"
+                    f"<b>Experience: </b> {context.user_data['j_experience']}\n"
+                    f"<b>Location: </b> {context.user_data['j_location']}\n")
+
   await update.message.reply_html(
-    text=f"<b>Registered successfully 🎉</b>\n"
+    # text=f"<b>Registered successfully 🎉</b>\n"
+    summary
   )
   
   return ConversationHandler.END
@@ -225,13 +214,10 @@ def main() -> None:
       J_SKILLS: [MessageHandler(filters.TEXT & (~filters.COMMAND), j_skills)],
       J_EXPERIENCE: [MessageHandler(filters.TEXT & (~filters.COMMAND), j_experience)],
       J_LOCATION: [MessageHandler(filters.TEXT & (~filters.COMMAND), j_location)],
-      J_REGISTER: [MessageHandler(filters.TEXT & (~filters.COMMAND), j_register)],
-      # J_CV: [
-      #   MessageHandler(filters.TEXT & (~filters.COMMAND), j_cv),
-      #   CommandHandler('skip', skip_cv_upload)
-      # ],
-      
+      J_REGISTER: [MessageHandler(filters.TEXT & (~filters.COMMAND), j_register)],      
       R_NAME: [MessageHandler(filters.TEXT & (~filters.COMMAND), r_name)],
+      R_EMAIL: [MessageHandler(filters.TEXT & (~filters.COMMAND), r_email)],
+      R_LOCATION: [MessageHandler(filters.TEXT & (~filters.COMMAND), r_location)],
     },
     fallbacks=[CommandHandler("cancel", cancel_command)],
   )
@@ -240,7 +226,6 @@ def main() -> None:
   app.add_handler(CommandHandler("start", start_command))
   app.add_handler(CommandHandler("help", help_command))
   app.add_handler(CommandHandler("cancel", cancel_command))
-  
   
   app.run_polling()
 
