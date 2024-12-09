@@ -1,0 +1,68 @@
+[
+  {
+    "__": "jobseekers",
+    "id": 123456,
+    "name": "John Doe",
+    "email": "john@doe.com",
+    "skills": ["Python", "Data Analysis"],
+    "experience": "3 years",
+    "location": "Remote",
+    "cv": "FILE",
+    "username": "@johndoe",
+    "preferences": "",
+    "subscribed_alerts": [2, 5, 3, 66, 13]
+  },
+  {
+    "__": "recruiters",
+    "id": 734525,
+    "name": "John Doe",
+    "email": "john@doe.com",
+    "location": "UAE",
+    "username": "@kyle"
+  },
+  {
+    "__": "admins",
+    "id": 835279,
+    "name": "John Doe",
+    "email": "john@doe.com",
+    "password": "supersecret"
+  },
+  {
+    "__": "companies",
+    "id": 789123,
+    "owner_id": "recruiters.id",
+    "name": "TechCorp",
+    "about": "lorem ipsum idir hums issne kse wuebku slebes lfjse uwek",
+    "location": "TechCorp",
+    "address": "TechCorp"
+  },
+  {
+    "__": "categories",
+    "id": 363745,
+    "name": "tech",
+    "desc": "something about cating"
+  },
+  {
+    "__": "jobs",
+    "id": 1,
+    "category_id": "categories.id",
+    "company_id": "companies.id",
+    "recruiter_id": "recruiter.id",
+    "title": "Software Engineer",
+    "description": "Build scalable applications.",
+    "type": "On-site",
+    "location": "AA",
+    "salary": "$80,000",
+    "keywords": "keyword1, keyword2, keyword3",
+    "status": "accepted"
+  },
+  {
+    "__": "applications",
+    "id": 1,
+    "job_id": "jobs.id",
+    "jobseeker_id": "jobseekers.id",
+    "cover": "I love building scalable applications.",
+    "cv": "jobseekers.cv",
+    "status": "shortlisted"
+  }
+]
