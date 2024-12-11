@@ -30,9 +30,9 @@ conn = psycopg2.connect(
 )
 cursor = conn.cursor()
 
-cursor.execute("SELECT * FROM users")
-records = cursor.fetchall()
-print(records)
+# cursor.execute("SELECT * FROM users")
+# records = cursor.fetchall()
+# print(records)
 
 # Enable logging
 logging.basicConfig(
@@ -62,9 +62,9 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     [InlineKeyboardButton('Help', callback_data='help')],
   ]
   
-  recruiterKeyboard = [
-    [InlineKeyboardButton('...', callback_data='...')],
-  ]
+  # recruiterKeyboard = [
+  #   [InlineKeyboardButton('...', callback_data='...')],
+  # ]
   
   if not user:
     await update.message.reply_html(
@@ -100,6 +100,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text="Help:\n\n"
         "/start - start the bot\n"
         "/help - show this help message\n"        
+        "/cancel - to exit the current conversation\n"
         "/ask your question - to ask your questions\n\n"
         "<b>My Profile</b>:  to register and update your profile\n"
         "<b>My Applications</b>:  track the status of all your applications\n"
@@ -121,6 +122,7 @@ async def role_decision(update: Update, context: ContextTypes.DEFAULT_TYPE):
   decision = query.data
   
   if decision == 'jobseeker':
+    print("job seeeeeker")
     await query.edit_message_text(
       text=f"<b>Job Seeker Registration</b>\n\n"
             "<b>Please enter your name: </b>",
@@ -128,6 +130,7 @@ async def role_decision(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     return J_NAME
   elif decision == 'recruiter':
+    print("recruiter")
     await query.edit_message_text(
       text=f"<b>Recruiter Registration</b>\n\n"
             "<b>Please enter your name: </b>",
@@ -135,6 +138,7 @@ async def role_decision(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     return R_NAME
   else:
+    print("who the ...")
     await query.edit_message_text(
       text="<b>Invalid choice. Please try again.</b>"
     )
