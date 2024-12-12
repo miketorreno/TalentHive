@@ -4,4 +4,5 @@
         "jobseeker",
         "jobseekers"
     ],
+    "codeium.enableCodeLens": false,
 }

@@ -1,8 +1,13 @@
+-- LOGIN INTO POSTGRES
 -- sudo -i -u postgres
+-- psql
+-- 
+-- 
 
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
-  role INT NOT NULL,
+  telegram_id BIGINT NOT NULL,
+  role_id INT NOT NULL,
   name VARCHAR NOT NULL,
   email VARCHAR,
   username VARCHAR,

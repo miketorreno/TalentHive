@@ -57,7 +57,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
   jobseekerKeyboard = [
     [InlineKeyboardButton('My Profile', callback_data='my_profile')],
     [InlineKeyboardButton('My Applications', callback_data='my_applications')],
-    [InlineKeyboardButton('Job Notifications', callback_data='my_applications')],
+    [InlineKeyboardButton('Job Notifications', callback_data='job_notifications')],
     [InlineKeyboardButton('Settings', callback_data='settings')],
     [InlineKeyboardButton('Help', callback_data='help')],
   ]
