@@ -2,6 +2,8 @@ from telegram import (
   Update,
   InlineKeyboardButton,
   InlineKeyboardMarkup,
+  ReplyKeyboardMarkup,
+  ReplyKeyboardRemove,
 )
 from telegram.ext import (
   filters,
@@ -13,9 +15,9 @@ from telegram.ext import (
   CallbackQueryHandler,
 )
 
-R_WELCOME = range(1)
+J_WELCOME = range(1)
 
-async def r_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def j_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
   jobseekerKeyboard = [
     [InlineKeyboardButton('My Profile', callback_data='my_profile')],
     [InlineKeyboardButton('My Applications', callback_data='my_applications')],

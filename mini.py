@@ -1,12 +1,11 @@
 import os
 import logging
+import psycopg2
 
 from telegram import (
   Update,
   InlineKeyboardButton,
   InlineKeyboardMarkup,
-  ReplyKeyboardMarkup,
-  ReplyKeyboardRemove,
 )
 from telegram.ext import (
   filters,
@@ -18,9 +17,6 @@ from telegram.ext import (
   CallbackQueryHandler,
 )
 
-from recruiters import *
-import psycopg2
-
 conn = psycopg2.connect(
   host="localhost",
   database="talenthive",
@@ -30,42 +26,23 @@ conn = psycopg2.connect(
 )
 cursor = conn.cursor()
 
-# cursor.execute("SELECT * FROM users")
-# records = cursor.fetchall()
-# print(records)
-
-# Enable logging
 logging.basicConfig(
   format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
-# States
-ROLE_DECISION, J_NAME, J_EMAIL, J_SKILLS, J_EXPERIENCE, J_LOCATION, J_CV, J_REGISTER, J_USERNAME, J_PREFERENCES, J_SUBSCRIBED_ALERTS = range(11)
-# START, CANCEL, SELECT, ADD, DELETE, EDIT = range(6)
+ROLE_DECISION, J_NAME, J_EMAIL, J_SKILLS, J_EXPERIENCE, J_LOCATION, J_CV, J_REGISTER, J_USERNAME, J_PREFERENCES, J_SUBSCRIBED_ALERTS, R_NAME = range(12)
+# ROLE_DECISION, WELCOME_JOBSEEKER, WELCOME_RECRUITER = range(3)
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
   id = update.message.chat.id
   user = cursor.execute("SELECT * FROM users WHERE id = %s", (id,))
-  print(f"User: {user}")
   
   guestKeyboard = [
     [InlineKeyboardButton('Recruiter', callback_data='recruiter')],
     [InlineKeyboardButton('Job Seeker', callback_data='jobseeker')],
   ]
-  
-  jobseekerKeyboard = [
-    [InlineKeyboardButton('My Profile', callback_data='my_profile')],
-    [InlineKeyboardButton('My Applications', callback_data='my_applications')],
-    [InlineKeyboardButton('Job Notifications', callback_data='my_applications')],
-    [InlineKeyboardButton('Settings', callback_data='settings')],
-    [InlineKeyboardButton('Help', callback_data='help')],
-  ]
-  
-  # recruiterKeyboard = [
-  #   [InlineKeyboardButton('...', callback_data='...')],
-  # ]
-  
+
   if not user:
     await update.message.reply_html(
       '<b>Hello, Welcome to Talent Bot!</b>\n\n'
@@ -75,24 +52,18 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ROLE_DECISION
   elif user.role == 1:
     await update.message.reply_html(
-      text=f"<b>Hello {user.name}, Welcome to Talent Hive Bot!</b>\n\n"
-            "<b>My Profile</b>:  to register and update your profile\n\n"
-            "<b>My Applications</b>:  track the status of all your applications\n\n"
-            "<b>Job Notifications</b>:  to filter and get the jobs you want straight from the Bot\n\n"
-            "<b>Settings</b>:  to customize your preferences\n\n"
-            "<b>Help</b>:  get answers to your questions about Talent Hive\n\n",
-      reply_markup=InlineKeyboardMarkup(jobseekerKeyboard),
+      '<b>JOB SEEKER ROLE</b>\n\n'
     )
+    # return WELCOME_JOBSEEKER
   elif user.role == 2:
     await update.message.reply_html(
-      text=f"<b>Hello {user.name}, Welcome to Talent Hive Bot!</b>\n"
+      '<b>RECRUITER ROLE</b>\n\n'
     )
+    # return WELCOME_RECRUITER
   else:
     await update.message.reply_html(
       '<b>Who the fuck are ya?</b>\n\n'
     )
-  
-    # return ROLE_DECISION
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
   await context.bot.send_message(
@@ -110,7 +81,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     parse_mode="HTML",
   )
 
-async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
   await update.message.reply_html(
     f'<b>Hope to talk to you soon.</b>'
   )
@@ -122,7 +93,7 @@ async def role_decision(update: Update, context: ContextTypes.DEFAULT_TYPE):
   decision = query.data
   
   if decision == 'jobseeker':
-    print("job seeeeeker")
+    print("job seekerrrrr")
     await query.edit_message_text(
       text=f"<b>Job Seeker Registration</b>\n\n"
             "<b>Please enter your name: </b>",
@@ -130,7 +101,7 @@ async def role_decision(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     return J_NAME
   elif decision == 'recruiter':
-    print("recruiter")
+    print("recruiterrrrr")
     await query.edit_message_text(
       text=f"<b>Recruiter Registration</b>\n\n"
             "<b>Please enter your name: </b>",
@@ -176,26 +147,19 @@ async def j_experience(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def j_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
   context.user_data['j_location'] = update.message.text
   print(context.user_data)
+  # insert data into database
+  cursor.execute("INSERT INTO users (id, name, email, experience, location, role) VALUES (%s, %s, %s, %s, %s, %s)", (context.user_data['j_id'], context.user_data['j_name'], context.user_data['j_email'], context.user_data['j_experience'], context.user_data['j_location'], 1))
+  conn.commit()
+
+  await update.message.reply_html(
+    f"<b>Registered successfully 🎉</b>\n\n"
+  )
   
   return J_REGISTER
 
 async def j_register(update: Update, context: ContextTypes.DEFAULT_TYPE):
-  print("here...")
-  
-  summary = (f"<b>Profile \n\n</b>"
-                    f"<b>ID: </b> {context.user_data['j_id']}\n"
-                    f"<b>Name: </b> {context.user_data['j_name']}\n"
-                    f"<b>Email: </b> {context.user_data['j_email']}\n"
-                    f"<b>Skills: </b> {context.user_data['j_skills']}\n"
-                    f"<b>Experience: </b> {context.user_data['j_experience']}\n"
-                    f"<b>Location: </b> {context.user_data['j_location']}\n")
+  print("registering...")
 
-  await update.message.reply_html(
-    # text=f"<b>Registered successfully 🎉</b>\n"
-    summary
-  )
-  
-  return ConversationHandler.END
 
 async def r_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
   context.user_data['r_id'] = update.message.chat.id
@@ -204,7 +168,6 @@ async def r_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
   await update.message.reply_html(f"<b>Please enter your email: </b>")
   
   # return R_EMAIL
-
 
 def main() -> None:
   app = Application.builder().token(os.getenv('TOKEN')).build()
@@ -220,8 +183,8 @@ def main() -> None:
       J_LOCATION: [MessageHandler(filters.TEXT & (~filters.COMMAND), j_location)],
       J_REGISTER: [MessageHandler(filters.TEXT & (~filters.COMMAND), j_register)],      
       R_NAME: [MessageHandler(filters.TEXT & (~filters.COMMAND), r_name)],
-      R_EMAIL: [MessageHandler(filters.TEXT & (~filters.COMMAND), r_email)],
-      R_LOCATION: [MessageHandler(filters.TEXT & (~filters.COMMAND), r_location)],
+      # R_EMAIL: [MessageHandler(filters.TEXT & (~filters.COMMAND), r_email)],
+      # R_LOCATION: [MessageHandler(filters.TEXT & (~filters.COMMAND), r_location)],
     },
     fallbacks=[CommandHandler("cancel", cancel_command)],
   )
