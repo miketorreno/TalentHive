@@ -77,7 +77,7 @@ callback_handler = CallbackQueryHandler(handle_callbacks)
 async def register(update: Update, context: ContextTypes.DEFAULT_TYPE):
   keyboard = [
     [InlineKeyboardButton("Employer", callback_data="register_employer")],
-    [InlineKeyboardButton("Job Seeker", callback_data="register_job_seeker")],
+    [InlineKeyboardButton("Job Seeker", callback_data="register_jobseeker")],
     [InlineKeyboardButton("Admin", callback_data="register_admin")]
   ]
   reply_markup = InlineKeyboardMarkup(keyboard)
@@ -98,7 +98,7 @@ async def register_role(update: Update, context: ContextTypes.DEFAULT_TYPE):
   
   if user_role == "employer":
     role_id = 1
-  elif user_role == "job_seeker":
+  elif user_role == "jobseeker":
     role_id = 2
   elif user_role == "admin":
     role_id = 3
@@ -138,6 +138,7 @@ async def browse_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
   cur = conn.cursor()
   cur.execute("SELECT job_id, title FROM jobs ORDER BY created_at DESC LIMIT 5")
   jobs = cur.fetchall()
+  print("jobs", jobs)
 
   # Create buttons for each job
   keyboard = [[InlineKeyboardButton(job[1], callback_data=f"view_job_{job[0]}")] for job in jobs]
