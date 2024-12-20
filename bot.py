@@ -4,18 +4,19 @@ import psycopg2
 
 from telegram import (
   Update,
+  ReplyKeyboardRemove,
   InlineKeyboardButton,
-  InlineKeyboardMarkup,
+  InlineKeyboardMarkup
 )
 from telegram.ext import (
   filters,
   Application,
-  ApplicationBuilder,
   ContextTypes,
-  CommandHandler,
   MessageHandler,
+  CommandHandler,
+  ApplicationBuilder,
   ConversationHandler,
-  CallbackQueryHandler,
+  CallbackQueryHandler
 )
 
 conn = psycopg2.connect(
@@ -34,6 +35,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 ROLE, COMPLETE = range(2)
+JOB_TITLE, JOB_DESCRIPTION, JOB_REQUIREMENTS, JOB_LOCATION, JOB_SALARY, CONFIRM = range(6)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
   keyboard = [
@@ -65,8 +67,8 @@ async def handle_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await register(update, context)  # Call the registration function
   elif query.data == "browse_jobs":
     await browse_jobs(update, context)
-  elif query.data == "post_job":
-    await post_job(update, context)
+  # elif query.data == "post_job":
+  #   await post_job(update, context)
   elif query.data == "help":
     await query.edit_message_text("Use the buttons to navigate the bot features.")
 
@@ -162,6 +164,101 @@ async def view_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
   message = f"**{job[0]}**\n\n{job[1]}\n\nLocation: {job[2]}"
   await query.edit_message_text(message, parse_mode="Markdown")
 
+async def post_job_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  await context.bot.send_message(
+    chat_id=update.effective_chat.id,
+    text="Let's post a job! Please enter the job title:",
+    reply_markup=ReplyKeyboardRemove(),  # Remove any existing keyboard
+    parse_mode="HTML"
+  )
+  # await update.message.reply_text(
+  #   "Let's post a job! Please enter the job title:",
+  #   reply_markup=ReplyKeyboardRemove()  # Remove any existing keyboard
+  # )
+  return JOB_TITLE
+
+async def post_job_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  context.user_data['job_title'] = update.message.text
+  await update.message.reply_text("Great! Now, please provide a job description:")
+  return JOB_DESCRIPTION
+
+async def post_job_description(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  context.user_data['job_description'] = update.message.text
+  await update.message.reply_text("What are the qualifications or requirements for this job?")
+  return JOB_REQUIREMENTS
+
+async def post_job_requirements(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  context.user_data['job_requirements'] = update.message.text
+  await update.message.reply_text("Where is this job located?")
+  return JOB_LOCATION
+
+async def post_job_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  context.user_data['job_location'] = update.message.text
+  await update.message.reply_text("What is the salary range for this job? (Optional, type 'skip' to leave it open)")
+  return JOB_SALARY
+
+async def post_job_salary(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  salary = update.message.text
+  if salary.lower() != 'skip':
+    context.user_data['job_salary'] = salary
+  else:
+    context.user_data['job_salary'] = "Not specified"
+
+  # Display summary
+  job_details = f"""
+  **Job Posting Summary:**
+  - **Title:** {context.user_data['job_title']}
+  - **Description:** {context.user_data['job_description']}
+  - **Requirements:** {context.user_data['job_requirements']}
+  - **Location:** {context.user_data['job_location']}
+  - **Salary:** {context.user_data['job_salary']}
+  """
+  await update.message.reply_text(
+    f"{job_details}\n\nDo you want to post this job? (Yes/No)"
+  )
+  return CONFIRM
+
+async def post_job_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  confirmation = update.message.text.lower()
+  if confirmation == "yes":
+    # Save job details to the database
+    cur = conn.cursor()
+    cur.execute(
+      "INSERT INTO jobs (title, description, requirements, location, salary) VALUES (%s, %s, %s, %s, %s)",
+      (
+        context.user_data['job_title'],
+        context.user_data['job_description'],
+        context.user_data['job_requirements'],
+        context.user_data['job_location'],
+        context.user_data['job_salary']
+      )
+    )
+    conn.commit()
+
+    await update.message.reply_text("Job successfully posted! 🎉")
+  else:
+    await update.message.reply_text("Job posting canceled.")
+
+  return ConversationHandler.END
+
+async def post_job_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  await update.message.reply_text("Job posting process has been canceled.", reply_markup=ReplyKeyboardRemove())
+  return ConversationHandler.END
+
+post_job_handler = ConversationHandler(
+  # entry_points=[CommandHandler("post_job", post_job_start)],
+  entry_points=[CallbackQueryHandler(post_job_start, "post_job")],
+  states={
+    JOB_TITLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, post_job_title)],
+    JOB_DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, post_job_description)],
+    JOB_REQUIREMENTS: [MessageHandler(filters.TEXT & ~filters.COMMAND, post_job_requirements)],
+    JOB_LOCATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, post_job_location)],
+    JOB_SALARY: [MessageHandler(filters.TEXT & ~filters.COMMAND, post_job_salary)],
+    CONFIRM: [MessageHandler(filters.Regex("^(Yes|No)$"), post_job_confirm)],
+  },
+  fallbacks=[CommandHandler("cancel", post_job_cancel)],
+)
+
 
 
 # registration_handler = ConversationHandler(
@@ -178,13 +275,16 @@ def main():
   # Command Handlers
   app.add_handler(CommandHandler("start", start))
   app.add_handler(CommandHandler("cancel", cancel))
+  
+  # Conversation Handler
+  app.add_handler(post_job_handler)  # Add the job posting conversation handler
 
   # Feature-Specific Handlers
   app.add_handler(CallbackQueryHandler(register_role, pattern="register_.*"))
-  app.add_handler(CallbackQueryHandler(create_job, pattern="create_job"))
+  # app.add_handler(CallbackQueryHandler(create_job, pattern="create_job"))
   app.add_handler(CallbackQueryHandler(view_job, pattern="view_job_.*"))
 
-  # Callback Query Handlers
+  # General Callback Query Handlers (last to be invoked)
   app.add_handler(callback_handler)
 
   print("Bot is running...")

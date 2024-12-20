@@ -42,7 +42,9 @@ CREATE TABLE jobs (
   company_id INTEGER REFERENCES companies(company_id),
   title TEXT NOT NULL,
   description TEXT,
+  requirements TEXT,
   location VARCHAR,
+  salary VARCHAR,
   is_promoted BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP
