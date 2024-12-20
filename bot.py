@@ -36,12 +36,14 @@ logger = logging.getLogger(__name__)
 
 ROLE, COMPLETE = range(2)
 JOB_TITLE, JOB_DESCRIPTION, JOB_REQUIREMENTS, JOB_LOCATION, JOB_SALARY, CONFIRM = range(6)
+COMPANY_NAME, COMPANY_DESCRIPTION, COMPANY_CONFIRM = range(3)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
   keyboard = [
     [InlineKeyboardButton("Register", callback_data="register")],
     [InlineKeyboardButton("Browse Jobs", callback_data="browse_jobs")],
     [InlineKeyboardButton("Post a Job", callback_data="post_job")],
+    [InlineKeyboardButton("Create Company", callback_data="create_company")],
     [InlineKeyboardButton("Help", callback_data="help")]
   ]
   reply_markup = InlineKeyboardMarkup(keyboard)
@@ -165,16 +167,24 @@ async def view_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
   await query.edit_message_text(message, parse_mode="Markdown")
 
 async def post_job_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-  await context.bot.send_message(
-    chat_id=update.effective_chat.id,
-    text="Let's post a job! Please enter the job title:",
-    reply_markup=ReplyKeyboardRemove(),  # Remove any existing keyboard
-    parse_mode="HTML"
-  )
-  # await update.message.reply_text(
-  #   "Let's post a job! Please enter the job title:",
-  #   reply_markup=ReplyKeyboardRemove()  # Remove any existing keyboard
+  if update.callback_query:
+    query = update.callback_query
+    await query.edit_message_text(
+      "Let's post a job! Please enter the job title:"
+    )
+  else:
+    await update.message.reply_text(
+      "Let's post a job! Please enter the job title:",
+      reply_markup=ReplyKeyboardRemove()  # Remove any existing keyboard
+    )
+
+  # await context.bot.send_message(
+  #   chat_id=update.effective_chat.id,
+  #   text="Let's post a job! Please enter the job title:",
+  #   reply_markup=ReplyKeyboardRemove(),  # Remove any existing keyboard
+  #   parse_mode="HTML"
   # )
+
   return JOB_TITLE
 
 async def post_job_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -245,6 +255,112 @@ async def post_job_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
   await update.message.reply_text("Job posting process has been canceled.", reply_markup=ReplyKeyboardRemove())
   return ConversationHandler.END
 
+async def create_company_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  """Start the company creation process."""
+  user_id = update.effective_user.id
+
+  # Check if user is registered
+  cur = conn.cursor()
+  cur.execute("SELECT user_id FROM users WHERE telegram_id = %s", (user_id,))
+  result = cur.fetchone()
+
+  # if not result:
+  #   await update.message.reply_text("You need to register first!")
+  #   return ConversationHandler.END
+  if not result:
+    if update.callback_query:
+      query = update.callback_query
+      await query.edit_message_text(
+        "You need to register first!"
+      )
+    else:
+      await update.message.reply_text(
+        "You need to register first!",
+        reply_markup=ReplyKeyboardRemove()  # Remove any existing keyboard
+      )
+    return ConversationHandler.END
+
+  # Save user ID in context for later use
+  context.user_data['user_id'] = result[0]
+
+  # await update.message.reply_text("Please enter the name of the company:")
+  if update.callback_query:
+    query = update.callback_query
+    await query.edit_message_text(
+      "Please enter the name of the company:"
+    )
+  else:
+    await update.message.reply_text(
+      "Please enter the name of the company:",
+      reply_markup=ReplyKeyboardRemove()  # Remove any existing keyboard
+    )
+
+  return COMPANY_NAME
+
+async def create_company_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  """Save the company name and ask for a description."""
+  context.user_data['company_name'] = update.message.text
+  await update.message.reply_text("Please enter a description for the company:")
+  return COMPANY_DESCRIPTION
+
+async def create_company_description(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  """Save the description and show confirmation."""
+  context.user_data['company_description'] = update.message.text
+
+  # Display confirmation message
+  company_name = context.user_data['company_name']
+  company_description = context.user_data['company_description']
+  confirmation_message = f"""
+  **Company Details:**
+  - **Name:** {company_name}
+  - **Description:** {company_description}
+
+  Do you want to create this company? (Yes/No)
+  """
+  await update.message.reply_text(confirmation_message)
+  return COMPANY_CONFIRM
+
+async def create_company_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  """Save the company to the database or cancel."""
+  user_response = update.message.text.lower()
+
+  if user_response == "yes":
+    user_id = context.user_data['user_id']
+    company_name = context.user_data['company_name']
+    company_description = context.user_data['company_description']
+
+    # Save to database
+    cur = conn.cursor()
+    cur.execute(
+      "INSERT INTO companies (name, description, user_id) VALUES (%s, %s, %s)",
+      (company_name, company_description, user_id)
+    )
+    conn.commit()
+
+    await update.message.reply_text("Company successfully created! 🎉")
+  else:
+    await update.message.reply_text("Company creation canceled.")
+
+  return ConversationHandler.END
+
+async def create_company_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  """Cancel the company creation process."""
+  await update.message.reply_text("Company creation process has been canceled.")
+  return ConversationHandler.END
+
+
+
+create_company_handler = ConversationHandler(
+  # entry_points=[CommandHandler("create_company", create_company_start)],
+  entry_points=[CallbackQueryHandler(create_company_start, "create_company")],
+  states={
+    COMPANY_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, create_company_name)],
+    COMPANY_DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, create_company_description)],
+    COMPANY_CONFIRM: [MessageHandler(filters.Regex("^(Yes|No)$"), create_company_confirm)],
+  },
+  fallbacks=[CommandHandler("cancel", create_company_cancel)],
+)
+
 post_job_handler = ConversationHandler(
   # entry_points=[CommandHandler("post_job", post_job_start)],
   entry_points=[CallbackQueryHandler(post_job_start, "post_job")],
@@ -278,6 +394,7 @@ def main():
   
   # Conversation Handler
   app.add_handler(post_job_handler)  # Add the job posting conversation handler
+  app.add_handler(create_company_handler)
 
   # Feature-Specific Handlers
   app.add_handler(CallbackQueryHandler(register_role, pattern="register_.*"))
