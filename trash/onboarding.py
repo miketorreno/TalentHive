@@ -1,4 +1,4 @@
-from mini import (main, start_command, help_command, cancel_command)
+from trash.mini import (main, start_command, help_command, cancel_command)
 from telegram import (
   Update,
   InlineKeyboardButton,
