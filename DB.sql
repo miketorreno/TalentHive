@@ -40,6 +40,7 @@ CREATE TABLE companies (
 CREATE TABLE jobs (
   job_id SERIAL PRIMARY KEY,
   company_id INT NOT NULL REFERENCES companies(company_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  user_id INT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
   title TEXT NOT NULL,
   description TEXT,
   requirements TEXT,
@@ -54,18 +55,13 @@ CREATE TABLE applications (
   application_id SERIAL PRIMARY KEY,
   job_id INT NOT NULL REFERENCES jobs(job_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
   user_id INT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  cover_letter TEXT,
+  note TEXT,
   status TEXT CHECK (status IN ('applied', 'shortlisted', 'rejected')) DEFAULT 'applied',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP
 );
 
-CREATE TABLE saved_jobs (
-  save_id SERIAL PRIMARY KEY,
-  job_id INT NOT NULL REFERENCES jobs(job_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-  user_id INT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP
-);
 
 
 
@@ -78,6 +74,14 @@ CREATE TABLE saved_jobs (
 
 
 
+-- Not so urgent
+  CREATE TABLE saved_jobs (
+    save_id SERIAL PRIMARY KEY,
+    job_id INT NOT NULL REFERENCES jobs(job_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    user_id INT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP
+  );
 
 
 -- Generated 

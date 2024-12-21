@@ -38,6 +38,9 @@ ROLE, COMPLETE = range(2)
 JOB_TITLE, JOB_DESCRIPTION, JOB_REQUIREMENTS, JOB_LOCATION, JOB_SALARY, JOB_CONFIRM = range(6)
 COMPANY_NAME, COMPANY_DESCRIPTION, COMPANY_CONFIRM = range(3)
 EDIT_COMPANY_ID, EDIT_FIELD, EDIT_VALUE = range(3)
+APPLY_JOB_SELECTION, APPLY_ADD_JOB_NOTE, APPLY_JOB_CONFIRMATION = range(3)
+APPLY_JOB_NOTE = range(4)
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
   keyboard = [
@@ -46,6 +49,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     [InlineKeyboardButton("Post a Job", callback_data="post_job")],
     [InlineKeyboardButton("Create Company", callback_data="create_company")],
     [InlineKeyboardButton("My Companies", callback_data="my_companies")],
+    [InlineKeyboardButton("Edit Company", callback_data="edit_company")],
+    [InlineKeyboardButton("Apply Job", callback_data="apply_job")],
+    [InlineKeyboardButton("My Applications", callback_data="my_applications")],
     [InlineKeyboardButton("Help", callback_data="help")]
   ]
   reply_markup = InlineKeyboardMarkup(keyboard)
@@ -244,11 +250,24 @@ async def confirm_post_job_callback(update: Update, context: ContextTypes.DEFAUL
   job_description = context.user_data.get("job_description")
   job_salary = context.user_data.get("job_salary")
 
-  # Save the job to the database
   cur = conn.cursor()
+  cur.execute("SELECT user_id FROM users WHERE telegram_id = %s", (user_id,))
+  result = cur.fetchone()
+
+  if not result:
+    if update.callback_query:
+      query = update.callback_query
+      await query.edit_message_text("You need to register as a user first!")
+    else:
+      await update.message.reply_text("You need to register as a user first!")
+    return
+
+  user_id = result[0]
+  
+  # Save the job to the database
   cur.execute(
-    "INSERT INTO jobs (company_id, title, description, salary) VALUES (%s, %s, %s, %s)",
-    (2, job_title, job_description, job_salary),
+    "INSERT INTO jobs (company_id, user_id, title, description, salary) VALUES (%s, %s, %s, %s, %s)",
+    (2, user_id, job_title, job_description, job_salary),
   )
   conn.commit()
 
@@ -287,14 +306,9 @@ async def create_company_start(update: Update, context: ContextTypes.DEFAULT_TYP
   # await update.message.reply_text("Please enter the name of the company:")
   if update.callback_query:
     query = update.callback_query
-    await query.edit_message_text(
-      "Please enter the name of the company:"
-    )
+    await query.edit_message_text("Please enter the name of the company:")
   else:
-    await update.message.reply_text(
-      "Please enter the name of the company:",
-      reply_markup=ReplyKeyboardRemove()  # Remove any existing keyboard
-    )
+    await update.message.reply_text("Please enter the name of the company:", reply_markup=ReplyKeyboardRemove())  # Remove any existing keyboard
 
   return COMPANY_NAME
 
@@ -423,7 +437,11 @@ async def edit_company_start(update: Update, context: ContextTypes.DEFAULT_TYPE)
   result = cur.fetchone()
 
   if not result:
-    await update.message.reply_text("You need to register as a user first!")
+    if update.callback_query:
+      query = update.callback_query
+      await query.edit_message_text("You need to register as a user first!")
+    else:
+      await update.message.reply_text("You need to register as a user first!", reply_markup=ReplyKeyboardRemove())  # Remove any existing keyboard
     return ConversationHandler.END
 
   user_id = result[0]
@@ -433,7 +451,11 @@ async def edit_company_start(update: Update, context: ContextTypes.DEFAULT_TYPE)
   companies = cur.fetchall()
 
   if not companies:
-    await update.message.reply_text("You haven't created any companies yet.")
+    if update.callback_query:
+      query = update.callback_query
+      await query.edit_message_text("You haven't created any companies yet.")
+    else:
+      await update.message.reply_text("You haven't created any companies yet.")
     return ConversationHandler.END
 
   # Create inline buttons for companies
@@ -443,7 +465,11 @@ async def edit_company_start(update: Update, context: ContextTypes.DEFAULT_TYPE)
   ]
   reply_markup = InlineKeyboardMarkup(keyboard)
 
-  await update.message.reply_text("Select the company you want to edit:", reply_markup=reply_markup)
+  if update.callback_query:
+    query = update.callback_query
+    await query.edit_message_text("Select the company you want to edit:", reply_markup=reply_markup)
+  else:
+    await update.message.reply_text("Select the company you want to edit:", reply_markup=reply_markup)
   return EDIT_COMPANY_ID
 
 async def edit_company_id_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -481,7 +507,8 @@ async def edit_company_id_callback(update: Update, context: ContextTypes.DEFAULT
   await query.edit_message_text(
     f"Current details:\n\n**Name:** {company[0]}\n**Description:** {company[1]}\n\n"
     "What would you like to edit?",
-    reply_markup=reply_markup
+    reply_markup=reply_markup,
+    parse_mode="Markdown"
   )
   return EDIT_FIELD
 
@@ -523,7 +550,8 @@ async def edit_company_value(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
   await update.message.reply_text(
     f"You are about to update the **{edit_field.capitalize()}** to:\n\n{new_value}\n\nDo you confirm?",
-    reply_markup=reply_markup
+    reply_markup=reply_markup,
+    parse_mode="Markdown"
   )
   return EDIT_VALUE
 
@@ -545,7 +573,6 @@ async def confirm_save_callback(update: Update, context: ContextTypes.DEFAULT_TY
   await query.edit_message_text(f"Company {edit_field.capitalize()} updated successfully!")
   return ConversationHandler.END
 
-
 async def cancel_save_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
   """Cancel the save process."""
   query = update.callback_query
@@ -554,13 +581,297 @@ async def cancel_save_callback(update: Update, context: ContextTypes.DEFAULT_TYP
   await query.edit_message_text("The update has been canceled.")
   return ConversationHandler.END
 
-
 async def edit_company_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
   """Cancel the edit process."""
   await update.message.reply_text("Editing process has been canceled.")
   return ConversationHandler.END
 
 
+# APPLYING FOR JOBS
+async def apply_job_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  user_id = update.effective_user.id
+  cur = conn.cursor()
+
+  cur.execute("SELECT user_id FROM users WHERE telegram_id = %s", (user_id,))
+  result = cur.fetchone()
+
+  if not result:
+    if update.callback_query:
+      query = update.callback_query
+      await query.edit_message_text("You need to register as a user first!")
+    else:
+      await update.message.reply_text("You need to register as a user first!")
+    return
+
+  user_id = result[0]
+
+  # Fetch jobs and their application statuses
+  cur.execute(
+    """
+    SELECT j.job_id, j.title, 
+      EXISTS (SELECT 1 FROM applications a WHERE a.job_id = j.job_id AND a.user_id = %s) AS already_applied
+    FROM jobs j
+    """,
+    (user_id,),
+  )
+  jobs = cur.fetchall()
+
+  if not jobs:
+    if update.callback_query:
+      query = update.callback_query
+      await query.edit_message_text("❌ No jobs available at the moment.")
+    else:
+      await update.message.reply_text("❌ No jobs available at the moment.")
+    return ConversationHandler.END
+
+  # Inline keyboard for jobs
+  keyboard = [
+    [
+      InlineKeyboardButton(
+        job[1] + (" (Applied)" if job[2] else ""),  # Append "(Applied)" if already applied
+        callback_data=f"view_job_{job[0]}" if not job[2] else f"applied_job_{job[0]}"
+      )
+    ]
+    for job in jobs
+  ]
+  reply_markup = InlineKeyboardMarkup(keyboard)
+
+  if update.callback_query:
+    query = update.callback_query
+    await query.edit_message_text("Select a job to view details:", reply_markup=reply_markup)
+  else:
+    await update.message.reply_text("Select a job to view details:", reply_markup=reply_markup)
+  return APPLY_JOB_SELECTION
+
+
+async def view_job_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  query = update.callback_query
+  await query.answer()
+
+  # Extract job ID from callback data
+  job_id = int(query.data.split("_")[2])
+  context.user_data["job_id"] = job_id
+
+  # Fetch job details from the database
+  cur = conn.cursor()
+  cur.execute("SELECT title, description, salary FROM jobs WHERE job_id = %s", (job_id,))
+  job = cur.fetchone()
+
+  if not job:
+    await query.edit_message_text("❌ Job not found.")
+    return ConversationHandler.END
+
+  job_title, job_description, job_salary = job
+
+  # Inline keyboard for applying or canceling
+  keyboard = [
+    [
+      InlineKeyboardButton("Apply", callback_data="apply_job_confirm"),
+      InlineKeyboardButton("Cancel", callback_data="cancel_apply_job"),
+    ]
+  ]
+  reply_markup = InlineKeyboardMarkup(keyboard)
+
+  await query.edit_message_text(
+    f"**Job Details:**\n\n"
+    f"**Title:** {job_title}\n"
+    f"**Description:** {job_description}\n"
+    f"**Salary:** {job_salary}\n\n"
+    "Do you want to apply for this job?",
+    reply_markup=reply_markup,
+    parse_mode="Markdown",
+  )
+  return APPLY_ADD_JOB_NOTE
+
+
+async def ask_for_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  query = update.callback_query
+  await query.answer()
+
+  # Save job ID in context
+  job_id = context.user_data.get("job_id", None)
+  if not job_id:
+    job_id = query.data.split("_")[-1]
+    context.user_data["job_id"] = job_id
+
+  if update.callback_query:
+    query = update.callback_query
+    await query.edit_message_text("Would you like to add a note or cover letter? (Reply with 'No' to skip)")
+  else:
+    await query.edit_message_text("Would you like to add a note or cover letter? (Reply with 'No' to skip)")
+  return APPLY_JOB_NOTE
+
+
+async def handle_note_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  user_note = update.message.text.strip()
+  if user_note.lower() != "no":
+    context.user_data["job_note"] = user_note
+    response = "Your note has been saved."
+  else:
+    context.user_data["job_note"] = None
+    response = "No note will be added to your application."
+
+  # Proceed to application confirmation
+  await update.message.reply_text(
+    text=f"{response}\n\nDo you confirm your application?",
+    reply_markup=InlineKeyboardMarkup([
+      [
+        InlineKeyboardButton("Confirm", callback_data="apply_job_confirm"),
+        InlineKeyboardButton("Cancel", callback_data="cancel_apply_job"),
+      ]
+    ]),
+  )
+  return APPLY_JOB_CONFIRMATION
+
+
+async def confirm_apply_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  query = update.callback_query
+  await query.answer()
+
+  job_id = context.user_data.get("job_id")
+  user_id = update.effective_user.id
+  job_note = context.user_data.get("job_note", None)
+
+  cur = conn.cursor()
+  cur.execute("SELECT user_id FROM users WHERE telegram_id = %s", (user_id,))
+  result = cur.fetchone()
+
+  if not result:
+    if update.callback_query:
+      query = update.callback_query
+      await query.edit_message_text("You need to register as a user first!")
+    else:
+      await update.message.reply_text("You need to register as a user first!")
+    return
+
+  user_id = result[0]
+
+  # Fetch job poster's details
+  cur.execute("SELECT user_id, title FROM jobs WHERE job_id = %s", (job_id,))
+  job_poster_id, job_title = cur.fetchone()
+
+  cur.execute("SELECT telegram_id, name FROM users WHERE user_id = %s", (job_poster_id,))
+  job_poster_telegram_id, job_poster_name = cur.fetchone()
+
+  # Save the application
+  cur.execute(
+    "INSERT INTO applications (job_id, user_id, note) VALUES (%s, %s, %s)",
+    (job_id, user_id, job_note),
+  )
+  conn.commit()
+
+  # Notify job poster
+  await context.bot.send_message(
+    chat_id=job_poster_telegram_id,
+    text=f"📢 A new application has been submitted for your job:\n\n"
+      f"**Job Title:** {job_title}\n"
+      f"**Applicant:** {update.effective_user.first_name}\n"
+      f"**Note:** {job_note or 'None'}",
+    parse_mode="Markdown",
+  )
+
+  await query.edit_message_text("✅ Application submitted successfully!")
+  return ConversationHandler.END
+
+
+async def my_applications(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  user_id = update.effective_user.id
+  cur = conn.cursor()
+  cur.execute("SELECT user_id FROM users WHERE telegram_id = %s", (user_id,))
+  result = cur.fetchone()
+
+  if not result:
+    if update.callback_query:
+      query = update.callback_query
+      await query.edit_message_text("You need to register as a user first!")
+    else:
+      await update.message.reply_text("You need to register as a user first!")
+    return
+
+  user_id = result[0]
+
+  cur.execute(
+    """
+    SELECT j.title, a.created_at, a.note
+    FROM applications a
+    JOIN jobs j ON a.job_id = j.job_id
+    WHERE a.user_id = %s
+    """,
+    (user_id,),
+  )
+  applications = cur.fetchall()
+
+  if not applications:
+    if update.callback_query:
+      query = update.callback_query
+      await query.edit_message_text("You haven't applied for any jobs yet.")
+    else:
+      await update.message.reply_text("You haven't applied for any jobs yet.")
+    return
+
+  application_list = "\n\n".join(
+    [f"**Job Title:** {app[0]}\n**Applied at:** {app[1]}\n**Note:** {app[2] or 'None'}" for app in applications]
+  )
+  
+  if update.callback_query:
+    query = update.callback_query
+    await update.callback_query.edit_message_text(
+      f"**Your Applications:**\n\n{application_list}",
+      parse_mode="Markdown"
+    )
+  else:
+    await update.message.reply_text(
+      f"**Your Applications:**\n\n{application_list}", 
+      parse_mode="Markdown"
+    )
+
+
+async def apply_job_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  query = update.callback_query
+  await query.answer()
+
+  # Extract job ID from callback data
+  job_id = int(query.data.split("_")[2])
+  context.user_data["job_id"] = job_id
+
+  # Confirm application
+  keyboard = [
+    [
+      InlineKeyboardButton("Confirm", callback_data="confirm_apply_job"),
+      InlineKeyboardButton("Cancel", callback_data="cancel_apply_job"),
+    ]
+  ]
+  reply_markup = InlineKeyboardMarkup(keyboard)
+
+  await query.edit_message_text(
+    "You are about to apply for this job. Do you confirm?",
+    reply_markup=reply_markup,
+  )
+  return APPLY_JOB_CONFIRMATION
+
+async def cancel_apply_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  query = update.callback_query
+  await query.answer()
+
+  await query.edit_message_text("❌ Application canceled.")
+  return ConversationHandler.END
+
+
+
+# HANDLERS
+apply_job_handler = ConversationHandler(
+  entry_points=[CallbackQueryHandler(apply_job_start, "apply_job"), CommandHandler("apply_job", apply_job_start)],
+  states={
+    APPLY_JOB_SELECTION: [CallbackQueryHandler(view_job_details, pattern="^view_job_")],
+    APPLY_ADD_JOB_NOTE: [CallbackQueryHandler(ask_for_note, pattern="^apply_job_")],
+    APPLY_JOB_NOTE: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_note_response)],
+    APPLY_JOB_CONFIRMATION: [
+      CallbackQueryHandler(confirm_apply_job, pattern="^apply_job_confirm$"),
+      CallbackQueryHandler(cancel_apply_job, pattern="^cancel_apply_job$"),
+    ],
+  },
+  fallbacks=[CommandHandler("cancel", lambda update, context: ConversationHandler.END)],
+)
 
 create_company_handler = ConversationHandler(
   entry_points=[CallbackQueryHandler(create_company_start, "create_company"), CommandHandler("create_company", create_company_start)],
@@ -597,7 +908,6 @@ post_job_handler = ConversationHandler(
     JOB_DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, post_job_description)],
     JOB_REQUIREMENTS: [MessageHandler(filters.TEXT & ~filters.COMMAND, post_job_requirements)],
     JOB_LOCATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, post_job_location)],
-    # JOB_SALARY: [MessageHandler(filters.TEXT & ~filters.COMMAND, post_job_salary)],
     JOB_CONFIRM: [
       MessageHandler(filters.TEXT & ~filters.COMMAND, post_job_confirm),
       CallbackQueryHandler(confirm_post_job_callback, pattern="^confirm_post_job$"),
@@ -621,17 +931,24 @@ def main():
   # Command Handlers
   app.add_handler(CommandHandler("start", start))
   app.add_handler(CommandHandler("cancel", cancel))
+  app.add_handler(CommandHandler("post_job", post_job_start))
+  app.add_handler(CommandHandler("apply_job", apply_job_start))
+  app.add_handler(CommandHandler("edit_company", edit_company_start))
+  app.add_handler(CommandHandler("create_company", create_company_start))
+  app.add_handler(CommandHandler("my_applications", my_applications))
   
   # Conversation Handlers
   app.add_handler(post_job_handler)  # Add the job posting conversation handler
-  app.add_handler(create_company_handler)
+  app.add_handler(apply_job_handler)
   app.add_handler(edit_company_handler)
+  app.add_handler(create_company_handler)
 
   # Feature-Specific Handlers
-  app.add_handler(CallbackQueryHandler(register_role, pattern="register_.*"))
   # app.add_handler(CallbackQueryHandler(create_job, pattern="create_job"))
+  app.add_handler(CallbackQueryHandler(register_role, pattern="register_.*"))
   app.add_handler(CallbackQueryHandler(view_job, pattern="view_job_.*"))
   app.add_handler(CallbackQueryHandler(list_companies, pattern="my_companies"))
+  app.add_handler(CallbackQueryHandler(my_applications, pattern="my_applications"))
 
   # General Callback Query Handlers (last to be invoked)
   app.add_handler(callback_handler)
