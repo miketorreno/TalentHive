@@ -34,6 +34,9 @@ logging.basicConfig(
 # logging.getLogger("httpx").setLevel(logging.WARNING)  # avoid all GET and POST requests being logged
 logger = logging.getLogger(__name__)
 
+
+CHOOSING_ROLE, REGISTER_NAME, REGISTER_EMAIL, REGISTER_PHONE, REGISTER_GENDER, \
+REGISTER_DOB, REGISTER_COUNTRY, REGISTER_CITY, CONFIRMATION = range(9)
 ROLE, COMPLETE = range(2)
 JOB_TITLE, JOB_DESCRIPTION, JOB_REQUIREMENTS, JOB_LOCATION, JOB_SALARY, JOB_CONFIRM = range(6)
 COMPANY_NAME, COMPANY_DESCRIPTION, COMPANY_CONFIRM = range(3)
@@ -48,11 +51,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
   cur.execute("SELECT * FROM users WHERE telegram_id = %s", (telegram_id,))
   user = cur.fetchone()
   
-  logger.info(f"USER : {user}")
+  register_keyboard = [
+    [InlineKeyboardButton("I'm a Job Seeker 🧑‍💼", callback_data='onboarding_job_seeker')],
+    [InlineKeyboardButton("I'm an Employer 🏢", callback_data='onboarding_employer')],
+  ]
   
-  if not user:
-    onboarding_start(update, context)
-
   keyboard = [
     [InlineKeyboardButton("Register", callback_data="register")],
     [InlineKeyboardButton("Browse Jobs", callback_data="browse_jobs")],
@@ -64,29 +67,48 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     [InlineKeyboardButton("My Applications", callback_data="my_applications")],
     [InlineKeyboardButton("Help", callback_data="help")]
   ]
-  reply_markup = InlineKeyboardMarkup(keyboard)
-
-  await update.message.reply_text("Welcome to the Job Listing Bot! Choose an option:", reply_markup=reply_markup)
-
-
-async def onboarding_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-  user_id = update.effective_user.id
+  # reply_markup = InlineKeyboardMarkup(keyboard)
   
-  keyboard = [
-    [InlineKeyboardButton("Register", callback_data="onboarding_register")],
-    [
-      InlineKeyboardButton("FAQ", callback_data="onboarding_faq"),
-      InlineKeyboardButton("Help", callback_data="onboarding_help"),
-    ],
-  ]
-  reply_markup = InlineKeyboardMarkup(keyboard)
+  if user:
+    print(f"\n USER : {user} \n")
+    await update.message.reply_text(
+      text=f"Hello there 👋 Welcome to HulumJobs! \n"
+            "Find jobs, post openings, or explore career opportunities with few taps.", 
+      reply_markup=InlineKeyboardMarkup(keyboard),
+      parse_mode="HTML"
+    )
+  else:
+    await update.message.reply_text(
+      "👋 Welcome to HulumJobs!\n\n"
+      "Let’s get started. Are you a job seeker or an employer?",
+      reply_markup=InlineKeyboardMarkup(register_keyboard)
+    )
+    # return CHOOSING_ROLE
 
-  await update.message.reply_text(
-    text=f"Hello there 👋 Welcome to HulumJobs! \n"
-          "Find jobs, post openings, or explore career opportunities with few taps.", 
-    reply_markup=reply_markup,
-    parse_mode="HTML"
-  )
+  
+
+
+  # await update.message.reply_text("Welcome to the HulumJobs! Choose an option:", reply_markup=reply_markup)
+
+
+# async def onb_something_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#   user_id = update.effective_user.id
+  
+#   keyboard = [
+#     [InlineKeyboardButton("Register", callback_data="onboarding_register")],
+#     [
+#       InlineKeyboardButton("FAQ", callback_data="onboarding_faq"),
+#       InlineKeyboardButton("Help", callback_data="onboarding_help"),
+#     ],
+#   ]
+#   reply_markup = InlineKeyboardMarkup(keyboard)
+
+#   await update.message.reply_text(
+#     text=f"Hello there 👋 Welcome to HulumJobs! \n"
+#           "Find jobs, post openings, or explore career opportunities with few taps.", 
+#     reply_markup=reply_markup,
+#     parse_mode="HTML"
+#   )
   
 
 
@@ -94,7 +116,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
   user = update.message.from_user
   logger.info("User %s canceled the conversation.", user.first_name)
   await update.message.reply_text(
-    "Bye! I hope we can talk again some day."
+    "Bye! I hope we can talk again soon."
   )
 
   return ConversationHandler.END
@@ -897,6 +919,149 @@ async def cancel_apply_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+# Start onboarding
+async def onboarding_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Start the onboarding process."""
+    keyboard = [
+        [InlineKeyboardButton("I'm a Job Seeker 🧑‍💼", callback_data='job_seeker')],
+        [InlineKeyboardButton("I'm an Employer 🏢", callback_data='employer')],
+    ]
+    if update.callback_query:
+      query = update.callback_query
+      await query.edit_message_text(
+        "👋 Welcome to HulumJobs!\n\n"
+        "Let’s get started. Are you a job seeker or an employer?",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+      )
+    else:
+      await update.message.reply_text(
+        "👋 Welcome to HulumJobs!\n\n"
+        "Let’s get started. Are you a job seeker or an employer?",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+      )
+    # return CHOOSING_ROLE
+
+# Handle role selection
+async def choose_role(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    context.user_data['role'] = query.data
+
+    if query.data == "onboarding_employer":
+        context.user_data['role_id'] = 1
+    elif query.data == "onboarding_job_seeker":
+        context.user_data['role_id'] = 2
+    elif query.data == "onboarding_admin":
+        context.user_data['role_id'] = 3
+    # context.user_data['role_id'] = role_id
+    
+    await query.edit_message_text(
+        f"Great! You've selected: *{'Job Seeker' if query.data == 'onboarding_job_seeker' else 'Employer'}*\n\n"
+        "Now, let's register your details. First, what's your name?",
+        parse_mode='Markdown'
+    )
+    return REGISTER_NAME
+
+# Collect user's name
+async def register_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['name'] = update.message.text
+    await update.message.reply_text("Thanks! Now, please provide your email address.")
+    return REGISTER_EMAIL
+
+# Collect user's email
+async def register_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['email'] = update.message.text
+    await update.message.reply_text("Got it! What's your phone number?")
+    return REGISTER_PHONE
+
+# Collect user's phone number
+async def register_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['phone'] = update.message.text
+    keyboard = [
+        [InlineKeyboardButton("Male", callback_data='male'), InlineKeyboardButton("Female", callback_data='female')],
+        [InlineKeyboardButton("Skip", callback_data='skip')],
+    ]
+    await update.message.reply_text("What’s your gender? (Optional)", reply_markup=InlineKeyboardMarkup(keyboard))
+    return REGISTER_GENDER
+
+# Collect gender
+async def register_gender(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    context.user_data['gender'] = query.data if query.data != 'skip' else None
+    await query.edit_message_text("Got it! What's your date of birth or age? (Optional)")
+    return REGISTER_DOB
+
+# Collect date of birth
+async def register_dob(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message:
+        context.user_data['dob'] = update.message.text
+    else:
+        context.user_data['dob'] = None
+    await update.message.reply_text("What’s your country?")
+    return REGISTER_COUNTRY
+
+# Collect country
+async def register_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['country'] = update.message.text
+    await update.message.reply_text("And your city?")
+    return REGISTER_CITY
+
+# Collect city
+async def register_city(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['city'] = update.message.text
+    user_data = context.user_data
+    keyboard = [
+        [InlineKeyboardButton("Confirm ✅", callback_data='confirm')],
+        [InlineKeyboardButton("Start Over 🔄", callback_data='restart')],
+    ]
+    await update.message.reply_text(
+        f"🎉 Registration Summary:\n\n"
+        f"Name: {user_data['name']}\n"
+        f"Email: {user_data['email']}\n"
+        f"Phone: {user_data['phone']}\n"
+        f"Gender: {user_data.get('gender', 'Not Provided')}\n"
+        f"Date of Birth/Age: {user_data.get('dob', 'Not Provided')}\n"
+        f"Country: {user_data['country']}\n"
+        f"City: {user_data['city']}\n\n"
+        f"Do you confirm this information?",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+    return CONFIRMATION
+
+# Confirm and save to database
+async def confirm_registration(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    telegram_id = update.effective_user.id
+    username = update.effective_user.username
+    
+    if query.data == 'confirm':
+        user_data = context.user_data
+        print(f"\n user_data: {user_data} \n")
+        # conn = db_connect()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO users (telegram_id, role_id, name, username, email, phone, gender, dob, country, city) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            (telegram_id, user_data['role_id'], user_data['name'], username, user_data['email'], user_data['phone'],
+             user_data.get('gender'), user_data.get('dob'), user_data['country'], user_data['city'])
+        )
+        conn.commit()
+        # cur.close()
+        # conn.close()
+        await query.edit_message_text("🎉 Registration complete! Welcome to HulumJobs!")
+    elif query.data == 'restart':
+        await query.edit_message_text("Let's start over. Use /start to begin again.")
+    return ConversationHandler.END
+
+# Cancel command
+async def onboarding_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Registration canceled. Type /start to restart.")
+    return ConversationHandler.END
+
+
+
+
 # HANDLERS
 apply_job_handler = ConversationHandler(
   entry_points=[CallbackQueryHandler(apply_job_start, "apply_job"), CommandHandler("apply_job", apply_job_start)],
@@ -956,6 +1121,24 @@ post_job_handler = ConversationHandler(
   fallbacks=[CommandHandler("cancel", post_job_cancel)],
 )
 
+onboarding_handler = ConversationHandler(
+  # entry_points=[CommandHandler('onboarding_start', onboarding_start)],
+  # entry_points=[CallbackQueryHandler(onboarding_start)],
+  entry_points=[CallbackQueryHandler(choose_role, 'onboarding_.*')],
+  states={
+    # CHOOSING_ROLE: [CallbackQueryHandler(choose_role)],
+    REGISTER_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, register_name)],
+    REGISTER_EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, register_email)],
+    REGISTER_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, register_phone)],
+    REGISTER_GENDER: [CallbackQueryHandler(register_gender)],
+    REGISTER_DOB: [MessageHandler(filters.TEXT & ~filters.COMMAND, register_dob)],
+    REGISTER_COUNTRY: [MessageHandler(filters.TEXT & ~filters.COMMAND, register_country)],
+    REGISTER_CITY: [MessageHandler(filters.TEXT & ~filters.COMMAND, register_city)],
+    CONFIRMATION: [CallbackQueryHandler(confirm_registration)],
+  },
+  fallbacks=[CommandHandler('onboarding_cancel', onboarding_cancel)],
+)
+
 # registration_handler = ConversationHandler(
 #   entry_points=[CommandHandler("register", register)],
 #   states={
@@ -981,6 +1164,7 @@ def main():
   app.add_handler(apply_job_handler)
   app.add_handler(edit_company_handler)
   app.add_handler(create_company_handler)
+  app.add_handler(onboarding_handler)
 
   # Feature-Specific Handlers
   # app.add_handler(CallbackQueryHandler(create_job, pattern="create_job"))

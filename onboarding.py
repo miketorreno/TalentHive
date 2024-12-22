@@ -2,7 +2,7 @@ import os
 import logging
 import psycopg2
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, ConversationHandler, MessageHandler, filters, ApplicationBuilder
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, ConversationHandler, MessageHandler, filters, ApplicationBuilder, ContextTypes
 
 
 # Logging
@@ -35,7 +35,7 @@ async def db_connect():
     )
 
 # Start onboarding
-async def start(update: Update, context):
+async def onboarding_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Start the onboarding process."""
     keyboard = [
         [InlineKeyboardButton("I'm a Job Seeker 🧑‍💼", callback_data='job_seeker')],
@@ -49,7 +49,7 @@ async def start(update: Update, context):
     return CHOOSING_ROLE
 
 # Handle role selection
-async def choose_role(update: Update, context):
+async def choose_role(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     context.user_data['role'] = query.data
@@ -70,19 +70,19 @@ async def choose_role(update: Update, context):
     return REGISTER_NAME
 
 # Collect user's name
-async def register_name(update: Update, context):
+async def register_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['name'] = update.message.text
     await update.message.reply_text("Thanks! Now, please provide your email address.")
     return REGISTER_EMAIL
 
 # Collect user's email
-async def register_email(update: Update, context):
+async def register_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['email'] = update.message.text
     await update.message.reply_text("Got it! What's your phone number?")
     return REGISTER_PHONE
 
 # Collect user's phone number
-async def register_phone(update: Update, context):
+async def register_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['phone'] = update.message.text
     keyboard = [
         [InlineKeyboardButton("Male", callback_data='male'), InlineKeyboardButton("Female", callback_data='female')],
@@ -92,14 +92,14 @@ async def register_phone(update: Update, context):
     return REGISTER_GENDER
 
 # Collect gender
-async def register_gender(update: Update, context):
+async def register_gender(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     context.user_data['gender'] = query.data if query.data != 'skip' else None
     await query.edit_message_text("Got it! What's your date of birth or age? (Optional)")
     return REGISTER_DOB
 
 # Collect date of birth
-async def register_dob(update: Update, context):
+async def register_dob(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message:
         context.user_data['dob'] = update.message.text
     else:
@@ -108,13 +108,13 @@ async def register_dob(update: Update, context):
     return REGISTER_COUNTRY
 
 # Collect country
-async def register_country(update: Update, context):
+async def register_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['country'] = update.message.text
     await update.message.reply_text("And your city?")
     return REGISTER_CITY
 
 # Collect city
-async def register_city(update: Update, context):
+async def register_city(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['city'] = update.message.text
     user_data = context.user_data
     keyboard = [
@@ -136,7 +136,7 @@ async def register_city(update: Update, context):
     return CONFIRMATION
 
 # Confirm and save to database
-async def confirm_registration(update: Update, context):
+async def confirm_registration(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     
@@ -161,16 +161,15 @@ async def confirm_registration(update: Update, context):
     return ConversationHandler.END
 
 # Cancel command
-async def cancel(update: Update, context):
-    await update.message.reply_text("Onboarding canceled. Type /start to restart.")
+async def onboarding_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Registration canceled. Type /start to restart.")
     return ConversationHandler.END
 
-# Main function
-def main():
-    app = ApplicationBuilder().token(os.getenv('TOKEN')).build()
-
-    onboarding_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
+# Onboarding conversation handler
+def get_onboarding_handler():
+    return ConversationHandler(
+        # entry_points=[CommandHandler('onboarding_start', onboarding_start)],
+        entry_points=[CallbackQueryHandler(onboarding_start)],
         states={
             CHOOSING_ROLE: [CallbackQueryHandler(choose_role)],
             REGISTER_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, register_name)],
@@ -182,14 +181,33 @@ def main():
             REGISTER_CITY: [MessageHandler(filters.TEXT & ~filters.COMMAND, register_city)],
             CONFIRMATION: [CallbackQueryHandler(confirm_registration)],
         },
-        fallbacks=[CommandHandler('cancel', cancel)],
+        fallbacks=[CommandHandler('onboarding_cancel', onboarding_cancel)],
     )
 
-    app.add_handler(onboarding_handler)
+# Main function
+# def main():
+#     app = ApplicationBuilder().token(os.getenv('TOKEN')).build()
+
+#     onboarding_handler = ConversationHandler(
+#         entry_points=[CommandHandler('onboarding_start', onboarding_start)],
+#         states={
+#             CHOOSING_ROLE: [CallbackQueryHandler(choose_role)],
+#             REGISTER_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, register_name)],
+#             REGISTER_EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, register_email)],
+#             REGISTER_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, register_phone)],
+#             REGISTER_GENDER: [CallbackQueryHandler(register_gender)],
+#             REGISTER_DOB: [MessageHandler(filters.TEXT & ~filters.COMMAND, register_dob)],
+#             REGISTER_COUNTRY: [MessageHandler(filters.TEXT & ~filters.COMMAND, register_country)],
+#             REGISTER_CITY: [MessageHandler(filters.TEXT & ~filters.COMMAND, register_city)],
+#             CONFIRMATION: [CallbackQueryHandler(confirm_registration)],
+#         },
+#         fallbacks=[CommandHandler('onboarding_cancel', onboarding_cancel)],
+#     )
+
+#     app.add_handler(onboarding_handler)
     
-    print("Bot is running...")
-    app.run_polling()
+#     print("Bot is running...")
+#     app.run_polling()
 
-
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     main()
