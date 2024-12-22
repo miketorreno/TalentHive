@@ -43,6 +43,16 @@ APPLY_JOB_NOTE = range(4)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  telegram_id = update.effective_user.id
+  cur = conn.cursor()
+  cur.execute("SELECT * FROM users WHERE telegram_id = %s", (telegram_id,))
+  user = cur.fetchone()
+  
+  logger.info(f"USER : {user}")
+  
+  if not user:
+    onboarding_start(update, context)
+
   keyboard = [
     [InlineKeyboardButton("Register", callback_data="register")],
     [InlineKeyboardButton("Browse Jobs", callback_data="browse_jobs")],
@@ -58,6 +68,28 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
   await update.message.reply_text("Welcome to the Job Listing Bot! Choose an option:", reply_markup=reply_markup)
 
+
+async def onboarding_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  user_id = update.effective_user.id
+  
+  keyboard = [
+    [InlineKeyboardButton("Register", callback_data="onboarding_register")],
+    [
+      InlineKeyboardButton("FAQ", callback_data="onboarding_faq"),
+      InlineKeyboardButton("Help", callback_data="onboarding_help"),
+    ],
+  ]
+  reply_markup = InlineKeyboardMarkup(keyboard)
+
+  await update.message.reply_text(
+    text=f"Hello there 👋 Welcome to HulumJobs! \n"
+          "Find jobs, post openings, or explore career opportunities with few taps.", 
+    reply_markup=reply_markup,
+    parse_mode="HTML"
+  )
+  
+
+
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
   user = update.message.from_user
   logger.info("User %s canceled the conversation.", user.first_name)
@@ -66,6 +98,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
   )
 
   return ConversationHandler.END
+
 
 # Handle Inline Button Callbacks
 async def handle_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -82,8 +115,10 @@ async def handle_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
   elif query.data == "help":
     await query.edit_message_text("Use the buttons to navigate the bot features.")
 
+
 # Register Callback Handler
 callback_handler = CallbackQueryHandler(handle_callbacks)
+
 
 # Inline Registration
 async def register(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -99,6 +134,7 @@ async def register(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text("Select your role:", reply_markup=reply_markup)
   else:
     await update.message.reply_text("Select your role:", reply_markup=reply_markup)
+
 
 async def register_role(update: Update, context: ContextTypes.DEFAULT_TYPE):
   query = update.callback_query
@@ -125,6 +161,7 @@ async def register_role(update: Update, context: ContextTypes.DEFAULT_TYPE):
   
   await query.edit_message_text(f"Registration complete as {user_role.capitalize()}.")
 
+
 async def post_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
   keyboard = [
     [InlineKeyboardButton("Create a Job", callback_data="create_job")],
@@ -138,12 +175,14 @@ async def post_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
   else:
     await update.message.reply_text("What would you like to do?", reply_markup=reply_markup)
 
+
 async def create_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
   query = update.callback_query
   await query.edit_message_text("Send me the job title:")
 
   # Next: Collect job details via a series of messages or buttons
   context.user_data["job_creation_step"] = "title"
+
 
 async def browse_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
   # Fetch jobs from the database
