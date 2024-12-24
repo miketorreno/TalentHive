@@ -9,7 +9,7 @@
 
 CREATE TABLE users (
   user_id SERIAL PRIMARY KEY,
-  telegram_id BIGINT UNIQUE NOT NULL,
+  telegram_id BIGINT NOT NULL,
   role_id INT NOT NULL CHECK (role_id IN (1, 2, 3)),
   name VARCHAR NOT NULL,
   username VARCHAR,
@@ -38,6 +38,15 @@ CREATE TABLE companies (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP
 );
+
+CREATE TABLE categories (
+  category_id SERIAL PRIMARY KEY,
+  parent_id INT REFERENCES categories(category_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  name TEXT NOT NULL,
+  description TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP
+)
 
 CREATE TABLE jobs (
   job_id SERIAL PRIMARY KEY,
