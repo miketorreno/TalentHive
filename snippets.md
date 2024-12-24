@@ -25,7 +25,7 @@
 async def is_registered(update: Update, context: ContextTypes.DEFAULT_TYPE):
   user_id = update.effective_user.id
   cur = conn.cursor()
-  cur.execute("SELECT user_id FROM users WHERE telegram_id = %s", (user_id,))
+  cur.execute("SELECT * FROM users WHERE telegram_id = %s", (user_id,))
   result = cur.fetchone()
 
   if not result:

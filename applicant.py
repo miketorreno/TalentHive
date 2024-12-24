@@ -1,15 +1,15 @@
 import os
 import logging
 import psycopg2
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, ConversationHandler, MessageHandler, filters, ApplicationBuilder, ContextTypes
 
 
 # Logging
 logging.basicConfig(
-  format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO  # level=logging.INFO | logging.DEBUG
+  format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.DEBUG  # level=logging.INFO | logging.DEBUG
 )
-logging.getLogger("httpx").setLevel(logging.WARNING)  # avoid all GET and POST requests being logged
+# logging.getLogger("httpx").setLevel(logging.WARNING)  # avoid all GET and POST requests being logged
 logger = logging.getLogger(__name__)
 
 
@@ -25,20 +25,115 @@ conn = psycopg2.connect(
 
 # Define states
 REGISTER, REGISTER_NAME, REGISTER_EMAIL, REGISTER_PHONE, REGISTER_GENDER, REGISTER_DOB, REGISTER_COUNTRY, REGISTER_CITY, CONFIRMATION = range(9)
-
+CHOOSE_ACTION = range(10)
 
 # Start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Start the onboarding process."""
-    keyboard = [
-        [InlineKeyboardButton("Register", callback_data='register')],
-    ]
-    await update.message.reply_text(
-        "👋 Welcome to HulumJobs!\n\n"
-        "Let’s get started.",
-        reply_markup=InlineKeyboardMarkup(keyboard)
+    telegram_id = update.effective_user.id
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM users WHERE telegram_id = %s", (telegram_id,))
+    user = cur.fetchone()
+    
+    if not user:
+        keyboard = [
+            [InlineKeyboardButton("Register", callback_data='register')],
+        ]
+        
+        """Start the onboarding process."""
+        await update.message.reply_text(
+            "👋 Welcome to HulumJobs!\n\n"
+            "Let’s get started.",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return REGISTER
+    else:
+        keyboard = [
+            ["My Profile", "My Applications"],
+            ["Job Notifications", "Help"]
+        ]
+        await update.message.reply_text(
+            text=f"<b>Hello {user[3]} 👋\t Welcome to HulumJobs!</b> \n\n"
+                "<b>👤 \tMy Profile</b>:\t manage your profile \n\n"
+                "<b>📑 \tMy Applications</b>:\t view and track your applications \n\n"
+                "<b>🔔 \tJob Notifications</b>:\t customize notifications you wanna receive \n\n"
+                "<b>❓ \tHelp</b>:\t show help message \n\n",
+            reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True),
+            parse_mode='HTML'
+        )
+
+
+async def main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    choice = update.message.text
+    choice = choice.lower()
+
+    telegram_id = update.effective_user.id
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM users WHERE telegram_id = %s", (telegram_id,))
+    user = cur.fetchone()
+    
+    print(f"\n CHOICE: {choice} \n")
+    
+    if choice == "my profile":
+        await update.message.reply_text(
+            text=f"<b>My Profile</b> \n\n"
+                f"<b>👤 \tName</b>: \t{user[3]} \n\n"
+                f"<b>👤 \t Username</b>: \t{user[4]} \n\n"
+                f"<b>👤 \t Gender</b>: \t{user[5]} \n\n"
+                f"<b>🎂 \tDate of Birth</b>: \t{user[6]} \n\n"
+                f"<b>🌐 \tCountry</b>: \t{user[9]} \n\n"
+                f"<b>🏙️ \tCity</b>: \t{user[10]} \n\n"
+                f"<b>📧 \tEmail</b>: \t{user[7]} \n\n"
+                f"<b>📞 \tPhone</b>: \t{user[8]} \n\n",
+            parse_mode='HTML'
+        )
+        return CHOOSE_ACTION
+    elif choice == "my applications":
+        await my_applications(update, context)
+    elif choice == "job notifications":
+        await update.message.reply_text("Job Notifications")
+    elif choice == "help":
+        await update.message.reply_text(
+            text=f"<b>Help</b>\n\n"
+                "<b>My Profile</b> - manage your profile \n\n"
+                "<b>My Applications</b> - view and track your applications \n\n"
+                "<b>Job Notifications</b> - customize notifications you wanna receive \n\n"
+                "<b>Help</b> - show help message \n\n",
+            parse_mode="HTML",
+        )
+    else:
+        await update.message.reply_text("Invalid choice. Please try again.")
+
+
+#     await query.edit_message_text("Use the buttons to navigate the bot features.")
+
+
+async def my_applications(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    telegram_id = update.effective_user.id
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM users WHERE telegram_id = %s", (telegram_id,))
+    user = cur.fetchone()
+
+    cur.execute(
+        "SELECT j.title, a.created_at, a.note FROM applications a JOIN jobs j ON a.job_id = j.job_id WHERE a.user_id = %s", (user[0],),
     )
-    return REGISTER
+    applications = cur.fetchall()
+
+    if not applications:
+        await update.message.reply_text("You haven't applied for any jobs yet.")
+        return
+
+    application_list = "\n\n".join(
+        [f"**Job Title:** {app[0]}\n**Applied at:** {app[1]}\n**Note:** {app[2] or 'None'}" for app in applications]
+    )
+  
+    await update.message.reply_text(
+        f"**Your Applications:**\n\n{application_list}", 
+        parse_mode="Markdown"
+    )
+
+
+
+
 
 
 # Start onboarding
@@ -179,11 +274,13 @@ onboarding_handler = ConversationHandler(
 )
 
 
+
 def main():
     app = ApplicationBuilder().token(os.getenv('TOKEN')).build()
 
     app.add_handler(CommandHandler('start', start))
 
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, main_menu))
     app.add_handler(onboarding_handler)
     
     print("Bot is running...")
