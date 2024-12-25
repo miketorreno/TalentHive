@@ -26,21 +26,8 @@ async def is_registered(update: Update, context: ContextTypes.DEFAULT_TYPE):
   user_id = update.effective_user.id
   cur = conn.cursor()
   cur.execute("SELECT * FROM users WHERE telegram_id = %s", (user_id,))
-  result = cur.fetchone()
+  user = cur.fetchone()
 
-  if not result:
-    if update.callback_query:
-      query = update.callback_query
-      await query.edit_message_text("You need to register as a user first!")
-    else:
-      await update.message.reply_text("You need to register as a user first!")
-    return
-
-  user_id = result[0]
-
-
-# Save user ID in context for later use
-context.user_data['user_id'] = result[0]
 ```
 
 

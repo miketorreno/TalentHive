@@ -118,6 +118,7 @@ CREATE TABLE applications (
   user_id INT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
   cover_letter TEXT,
   note TEXT,
+  cv VARCHAR,
   status VARCHAR CHECK (status IN ('applied', 'shortlisted', 'rejected')) DEFAULT 'applied',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP,
