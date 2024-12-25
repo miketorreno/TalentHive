@@ -35,7 +35,7 @@ current_saved_job_index = 0
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE telegram_id = %s", (telegram_id,))
+    cur.execute("SELECT * FROM users WHERE telegram_id = %s AND role_id = 1", (telegram_id,))
     user = cur.fetchone()
     
     if not user:
@@ -68,23 +68,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "I hope we can talk again soon."
     )
     return ConversationHandler.END
-
-
-def get_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    telegram_id = update.effective_user.id
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE telegram_id = %s", (telegram_id,))
-    user = cur.fetchone()
-    return user
-
-
-def format_date(date):
-    return date.strftime("%B %d, %Y")
 
 
 async def main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -263,7 +251,7 @@ async def confirm_apply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     cur = conn.cursor()
     
-    cur.execute("SELECT * FROM users WHERE telegram_id = %s", (telegram_id,))
+    cur.execute("SELECT * FROM users WHERE telegram_id = %s AND role_id = 1", (telegram_id,))
     user = cur.fetchone()
     
     # checking duplicate
@@ -318,7 +306,7 @@ async def saved_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def my_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE telegram_id = %s", (telegram_id,))
+    cur.execute("SELECT * FROM users WHERE telegram_id = %s AND role_id = 1", (telegram_id,))
     user = cur.fetchone()
     
     await update.message.reply_text(
@@ -343,7 +331,7 @@ async def my_applications(update: Update, context: ContextTypes.DEFAULT_TYPE):
         telegram_id = update.effective_user.id
         
     cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE telegram_id = %s", (telegram_id,))
+    cur.execute("SELECT * FROM users WHERE telegram_id = %s AND role_id = 1", (telegram_id,))
     user = cur.fetchone()
 
     cur.execute(
@@ -416,7 +404,7 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-
+# Onboarding
 async def onboarding_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -526,6 +514,20 @@ async def confirm_registration(update: Update, context: ContextTypes.DEFAULT_TYP
 async def onboarding_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Registration canceled. Type /start to restart.")
     return ConversationHandler.END
+
+
+
+# Helpers
+def get_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    telegram_id = update.effective_user.id
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM users WHERE telegram_id = %s AND role_id = 1", (telegram_id,))
+    user = cur.fetchone()
+    return user
+
+
+def format_date(date):
+    return date.strftime("%B %d, %Y")
 
 
 
