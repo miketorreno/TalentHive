@@ -23,6 +23,7 @@ Telegram bot that allows recruiters to post jobs and job seekers to browse & app
 
 ## Fixes
 
+- [ ] current_job_index = 0 & current_saved_job_index = 0; check these vars with returned no. of jobs in the db in `my_applications` and `saved_jobs`
 - [ ] Add exception handling for DB queries
 - [ ] User check is very very redundant (research a better way to do it) - Possibly if you check user registration status & fetch it's data at the beginning it'll be a whole lot better and faster
 - [ ] Fix bugs

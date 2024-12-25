@@ -25,17 +25,17 @@ conn = psycopg2.connect(
 
 
 # Define states
-REGISTER, REGISTER_NAME, REGISTER_EMAIL, REGISTER_PHONE, REGISTER_GENDER, REGISTER_DOB, REGISTER_COUNTRY, REGISTER_CITY, CONFIRMATION = range(9)
-CHOOSE_ACTION = range(10)
+REGISTER, REGISTER_NAME, REGISTER_EMAIL, REGISTER_PHONE, REGISTER_GENDER, REGISTER_DOB, REGISTER_COUNTRY, REGISTER_CITY, CONFIRMATION, CHOOSE_ACTION, COVER_LETTER, NEW_CV, CONFIRM_APPLY = range(13)
 
 current_job_index = 0
+current_saved_job_index = 0
 
 
 # Start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE telegram_id = %s", (telegram_id,))
+    cur.execute("SELECT * FROM users WHERE telegram_id = %s AND role_id = 1", (telegram_id,))
     user = cur.fetchone()
     
     if not user:
@@ -68,12 +68,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-def get_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    telegram_id = update.effective_user.id
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE telegram_id = %s", (telegram_id,))
-    user = cur.fetchone()
-    return user
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "I hope we can talk again soon."
+    )
+    return ConversationHandler.END
 
 
 async def main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -98,7 +97,7 @@ async def main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def browse_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cur = conn.cursor()
-    cur.execute("SELECT * FROM jobs ORDER BY created_at DESC LIMIT 5")
+    cur.execute("SELECT * FROM jobs ORDER BY created_at DESC LIMIT 25")
     jobs = cur.fetchall()
     
     if not jobs:
@@ -107,13 +106,10 @@ async def browse_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     job_list = [job for job in jobs]
     global current_job_index
-    # current_job_index = 0  # Reset index when starting
     job = job_list[current_job_index]
+    # current_job_index = 0  # Reset index when starting
     
-    deadline = job[11]
-    formatted_date = deadline.strftime("%B %d, %Y")
-    
-    job_details = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{formatted_date}</b> \n\n<b>Description</b>: \t{job[6]} \n\n"
+    job_details = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \t{job[6]} \n\n"
 
     # keyboard = []
     # if current_job_index > 0:
@@ -127,12 +123,12 @@ async def browse_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 InlineKeyboardButton("Previous", callback_data='job_previous'),
                 InlineKeyboardButton("Next", callback_data='job_next'),
             ],
-            [InlineKeyboardButton("Apply", callback_data='apply')]
+            [InlineKeyboardButton("Apply", callback_data=f'apply_{job[0]}')]
         ]
     else:
         keyboard = [
             [InlineKeyboardButton("Next", callback_data='job_next')],
-            [InlineKeyboardButton("Apply", callback_data='apply')]
+            [InlineKeyboardButton("Apply", callback_data=f'apply_{job[0]}')]
         ]
 
     await update.message.reply_text(
@@ -155,6 +151,154 @@ async def next_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await browse_jobs(query, context)
 
 
+async def next_saved_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global current_saved_job_index
+    query = update.callback_query
+    await query.answer()  # Acknowledge the callback
+
+    if query.data == 'saved_job_next':
+        current_saved_job_index += 1
+    elif query.data == 'saved_job_previous':
+        current_saved_job_index -= 1
+
+    await my_applications(update, context)
+
+
+
+# APPLYING FOR JOBS
+async def apply_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    context.user_data['job_id'] = int(query.data.split("_")[-1])
+    keyboard = [
+        [InlineKeyboardButton("Skip", callback_data='skip_cover_letter')],
+    ]
+    
+    await query.edit_message_text(
+        "Please enter your cover letter or click skip",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+    return COVER_LETTER
+
+
+async def cover_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['cover_letter'] = update.message.text
+    keyboard = [
+        [InlineKeyboardButton("Skip", callback_data='skip_new_cv')],
+    ]
+    
+    await update.message.reply_text(
+        "Would you like to submit a new CV",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+    return NEW_CV
+
+
+async def skip_cover_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    context.user_data['cover_letter'] = None
+    keyboard = [
+        [InlineKeyboardButton("Skip", callback_data='skip_new_cv')],
+    ]
+    
+    await query.edit_message_text(
+        "Would you like to submit a new CV",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+    return NEW_CV
+
+
+async def new_cv(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['new_cv'] = update.message.text
+    keyboard = [
+        [InlineKeyboardButton("Confirm", callback_data='confirm_apply')],
+        [InlineKeyboardButton("Cancel", callback_data='cancel_apply')],
+    ]
+    
+    await update.message.reply_text(
+        f"<b>Cover Letter</b>: {context.user_data['cover_letter']}\n\n"
+        f"<b>CV</b>: {context.user_data['new_cv']}\n\n"
+        f"<b>Apply for the job?</b>",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='HTML'
+    )
+    return CONFIRM_APPLY
+
+
+async def skip_new_cv(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    context.user_data['new_cv'] = None
+    keyboard = [
+        [InlineKeyboardButton("Confirm", callback_data='confirm_apply')],
+        [InlineKeyboardButton("Cancel", callback_data='cancel_apply')],
+    ]
+    
+    await query.edit_message_text(
+        f"<b>Cover Letter</b>: {context.user_data['cover_letter']}\n\n"
+        f"<b>CV</b>: {context.user_data['new_cv']}\n\n"
+        f"<b>Apply for the job?</b>",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='HTML'
+    )
+    return CONFIRM_APPLY
+
+
+async def confirm_apply(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    telegram_id = update.effective_user.id
+    cur = conn.cursor()
+    
+    cur.execute("SELECT * FROM users WHERE telegram_id = %s AND role_id = 1", (telegram_id,))
+    user = cur.fetchone()
+    
+    # checking duplicate
+    cur.execute("SELECT * FROM applications WHERE job_id = %s AND user_id = %s", (context.user_data['job_id'], user[0]))
+    duplicate = cur.fetchone()
+    if duplicate:
+        await query.edit_message_text("You have already applied for this job.")
+        return ConversationHandler.END
+    
+    cur.execute(
+        "INSERT INTO applications (job_id, user_id, cover_letter, cv) VALUES (%s, %s, %s, %s)",
+        (context.user_data['job_id'], user[0], context.user_data['cover_letter'], context.user_data['new_cv']),
+    )
+    conn.commit()
+
+    # # Fetch job poster's details
+    # cur.execute("SELECT user_id, title FROM jobs WHERE job_id = %s", (job_id,))
+    # job_poster_id, job_title = cur.fetchone()
+
+    # cur.execute("SELECT telegram_id, name FROM users WHERE user_id = %s", (job_poster_id,))
+    # job_poster_telegram_id, job_poster_name = cur.fetchone()
+
+
+    # # Notify job poster
+    # await context.bot.send_message(
+    #     chat_id=job_poster_telegram_id,
+    #     text=f"📢 A new application has been submitted for your job:\n\n"
+    #     f"<b>Job Title:</b> {job_title}\n"
+    #     f"<b>Applicant:</b> {update.effective_user.first_name}\n"
+    #     f"<b>Note:</b> {job_note or 'None'}",
+    #     parse_mode="HTML",
+    # )
+
+    await query.edit_message_text("Application submitted successfully!")
+    return ConversationHandler.END
+
+
+async def cancel_apply(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.callback_query:
+        query = update.callback_query
+        await query.edit_message_text("Application canceled.")
+    else:
+        await update.message.reply_text("Application canceled.")
+    return ConversationHandler.END
+
+
+
 async def saved_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Saved Jobs")
 
@@ -162,7 +306,7 @@ async def saved_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def my_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE telegram_id = %s", (telegram_id,))
+    cur.execute("SELECT * FROM users WHERE telegram_id = %s AND role_id = 1", (telegram_id,))
     user = cur.fetchone()
     
     await update.message.reply_text(
@@ -181,31 +325,68 @@ async def my_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def my_applications(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    telegram_id = update.effective_user.id
+    if update.callback_query:
+        telegram_id = update.callback_query.from_user.id
+    else:
+        telegram_id = update.effective_user.id
+        
     cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE telegram_id = %s", (telegram_id,))
+    cur.execute("SELECT * FROM users WHERE telegram_id = %s AND role_id = 1", (telegram_id,))
     user = cur.fetchone()
 
     cur.execute(
-        "SELECT j.title, a.created_at, a.note FROM applications a JOIN jobs j ON a.job_id = j.job_id WHERE a.user_id = %s", (user[0],),
+        "SELECT j.*, a.* FROM applications a JOIN jobs j ON a.job_id = j.job_id WHERE a.user_id = %s ORDER BY a.created_at DESC LIMIT 25", (user[0],),
     )
     applications = cur.fetchall()
 
     if not applications:
-        await update.message.reply_text("You haven't applied for any jobs yet.")
+        if update.callback_query:
+            await update.callback_query.edit_message_text("You haven't applied for any jobs yet.")
+        else:
+            await update.message.reply_text("You haven't applied for any jobs yet.")
         return
 
-    application_list = "\n\n".join(
-        [f"**Job Title:** {app[0]}\n**Applied at:** {app[1]}\n**Note:** {app[2] or 'None'}" for app in applications]
-    )
-  
-    await update.message.reply_text(
-        f"**Your Applications:**\n\n{application_list}", 
-        parse_mode="Markdown"
-    )
+    application_list = [job for job in applications]
+    global current_saved_job_index
+    application = application_list[current_saved_job_index]
+    # current_saved_job_index = 0  # Reset index when starting
+    
+    application_details = f"\nJob Title: <b>\t{application[5]}</b> \n\nJob Type: <b>\t{application[4]}</b> \n\nWork Location: <b>\t{application[8]}, {application[9]}</b> \n\nSalary: <b>\t{application[10]}</b> \n\nDeadline: <b>\t{format_date(application[11])}</b> \n\n<b>Description</b>: \t{application[6]} \n\n<b>__________________</b>\n\n<b>Applied at</b>: \t{format_date(application[24])} \n\n<b>Application Status</b>: \t{application[23].upper()} \n\n"
+
+    # keyboard = []
+    # if current_saved_job_index > 0:
+    #     keyboard.append([InlineKeyboardButton("Previous", callback_data='job_previous')])
+    # if current_saved_job_index < len(job_list) - 1:
+    #     keyboard.append([InlineKeyboardButton("Next", callback_data='job_next')])
+
+    if current_saved_job_index > 0:
+        keyboard = [
+            [
+                InlineKeyboardButton("Previous", callback_data='saved_job_previous'),
+                InlineKeyboardButton("Next", callback_data='saved_job_next'),
+            ],
+        ]
+    else:
+        keyboard = [
+            [InlineKeyboardButton("Next", callback_data='saved_job_next')],
+        ]
+
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            text=application_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+    else:
+        await update.message.reply_text(
+            text=application_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
     return
 
 
+# TODO: postponed
 async def job_notifications(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Job Notifications")
 
@@ -219,11 +400,11 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "<b>Help</b> - show help message \n\n",
         parse_mode="HTML",
     )
+    return
 
 
 
-
-# Start onboarding
+# Onboarding
 async def onboarding_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -235,21 +416,18 @@ async def onboarding_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return REGISTER_NAME
 
 
-# Collect name
 async def register_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['name'] = update.message.text
     await update.message.reply_text("Please enter your email address")
     return REGISTER_EMAIL
 
 
-# Collect email
 async def register_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['email'] = update.message.text
     await update.message.reply_text("Please enter your phone number")
     return REGISTER_PHONE
 
 
-# Collect phone number
 async def register_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['phone'] = update.message.text
     keyboard = [
@@ -263,7 +441,6 @@ async def register_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return REGISTER_GENDER
 
 
-# Collect gender
 async def register_gender(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     context.user_data['gender'] = query.data if query.data != 'skip' else None
@@ -271,7 +448,6 @@ async def register_gender(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return REGISTER_DOB
 
 
-# Collect date of birth
 async def register_dob(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message:
         context.user_data['dob'] = update.message.text
@@ -281,14 +457,12 @@ async def register_dob(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return REGISTER_COUNTRY
 
 
-# Collect country
 async def register_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['country'] = update.message.text
     await update.message.reply_text("Please enter your city")
     return REGISTER_CITY
 
 
-# Collect city
 async def register_city(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['city'] = update.message.text
     user_data = context.user_data
@@ -312,7 +486,6 @@ async def register_city(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return CONFIRMATION
 
 
-# Confirm and save to database
 async def confirm_registration(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -344,7 +517,41 @@ async def onboarding_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+# Helpers
+def get_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    telegram_id = update.effective_user.id
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM users WHERE telegram_id = %s AND role_id = 1", (telegram_id,))
+    user = cur.fetchone()
+    return user
+
+
+def format_date(date):
+    return date.strftime("%B %d, %Y")
+
+
+
 # Conversation handlers
+apply_job_handler = ConversationHandler(
+    entry_points=[CallbackQueryHandler(apply_start, "apply"), CommandHandler("apply", apply_start)],
+    states={
+        COVER_LETTER: [
+            MessageHandler(filters.TEXT & ~filters.COMMAND, cover_letter),
+            CallbackQueryHandler(skip_cover_letter, pattern="skip_cover_letter")
+        ],
+        NEW_CV: [
+            MessageHandler(filters.TEXT & ~filters.COMMAND, new_cv),
+            CallbackQueryHandler(skip_new_cv, pattern="skip_new_cv")
+        ],
+        CONFIRM_APPLY: [
+            CallbackQueryHandler(confirm_apply, pattern="confirm_apply"),
+            CallbackQueryHandler(cancel_apply, pattern="cancel_apply"),
+        ],
+    },
+    fallbacks=[CommandHandler("cancel", cancel_apply)],
+)
+
+
 onboarding_handler = ConversationHandler(
     entry_points=[CallbackQueryHandler(onboarding_start, 'register')],
     states={
@@ -365,15 +572,18 @@ onboarding_handler = ConversationHandler(
 
 def main():
     app = ApplicationBuilder().token(os.getenv('TOKEN')).build()
-
-    app.add_handler(CommandHandler('start', start))
     
-    app.add_handler(CallbackQueryHandler(next_job, pattern="job_.*"))
+    app.add_handler(CallbackQueryHandler(next_job, pattern="^job_.*"))
+    app.add_handler(CallbackQueryHandler(next_saved_job, pattern="^saved_job_.*"))
 
+    app.add_handler(apply_job_handler)
     app.add_handler(onboarding_handler)
 
     # main menu handler (general)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, main_menu))
+
+    app.add_handler(CommandHandler('start', start))
+    app.add_handler(CommandHandler('cancel', cancel))
     
     print("Bot is running...")
     app.run_polling(timeout=60)
