@@ -70,7 +70,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "I hope we can talk again soon."
+        "Hope we can talk again soon."
     )
     return ConversationHandler.END
 
