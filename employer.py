@@ -56,7 +56,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         await update.message.reply_text(
             text=f"<b>Hello {user[3]} 👋\t Welcome to HulumJobs!</b> \n\n"
-                "<b>🔊 \tPost a Job</b>:\t post job to find the best candidates \n\n"
+                "<b>🔊 \tPost a Job</b>:\t post job to find the right candidates for you \n\n"
                 "<b>📑 \tMy Job posts</b>:\t view & manage your job posts \n\n"
                 "<b>🏢 \tMy Companies</b>:\t add & manage your companies \n\n"
                 "<b>🔔 \tNotifications</b>:\t customize notifications you wanna receive \n\n"
@@ -73,6 +73,89 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     return ConversationHandler.END
 
+
+async def main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    choice = update.message.text
+    choice = choice.lower()
+
+    if choice == "post a job":
+        await update.message.reply_text("Post a job")
+        # await post_a_job(update, context)
+    elif choice == "my job posts":
+        await update.message.reply_text("My Job Posts")
+        # await my_job_posts(update, context)
+    elif choice == "my companies":
+        await my_companies(update, context)
+    elif choice == "notifications":
+        await update.message.reply_text("Notifications")
+    elif choice == "my profile":
+        await my_profile(update, context)
+    elif choice == "help":
+        await help(update, context)
+    else:
+        await update.message.reply_text("Please use the buttons below to navigate.")
+
+
+# Company management
+
+
+
+async def my_companies(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """List all companies owned by the user."""
+    user = get_user(update, context)
+    
+    # Fetch companies
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM companies WHERE user_id = %s", (user[0],))
+    companies = cur.fetchall()
+
+    if not companies:
+        await update.message.reply_text("You haven't created any companies yet.")
+        return
+
+    # Format the list of companies
+    message = "**Your Companies:**\n"
+    for company in companies:
+        message += f"- **ID:** {company[0]}\n  **Name:** {company[2]}\n  **Description:** {company[3]}\n  **Approval status:** {company[4]}\n\n"
+
+    await update.message.reply_text(message, parse_mode="Markdown")
+
+
+async def my_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = get_user(update, context)
+    
+    await update.message.reply_text(
+        text=f"<b>My Profile</b> \n\n"
+            f"<b>👤 \tName</b>: \t{user[3]} \n\n"
+            f"<b>👤 \tUsername</b>: \t{user[4]} \n\n"
+            f"<b>👤 \tGender</b>: \t{user[5]} \n\n"
+            f"<b>🎂 \tDate of Birth</b>: \t{user[6]} \n\n"
+            f"<b>🌐 \tCountry</b>: \t{user[9]} \n\n"
+            f"<b>🏙️ \tCity</b>: \t{user[10]} \n\n"
+            f"<b>📧 \tEmail</b>: \t{user[7]} \n\n"
+            f"<b>📞 \tPhone</b>: \t{user[8]} \n\n",
+        parse_mode='HTML'
+    )
+    return
+
+
+# TODO: postponed
+async def job_notifications(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Job Notifications")
+
+
+async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        text=f"<b>Help</b>\n\n"
+            "<b>Post a Job</b> - post job to find the right candidates for you \n\n"
+            "<b>My Job posts</b> - view & manage your job posts \n\n"
+            "<b>My Companies</b> - add & manage your companies \n\n"
+            "<b>Notifications</b> - customize notifications you wanna receive \n\n"
+            "<b>My Profile</b> - manage your profile \n\n"
+            "<b>Help</b> - show help message \n\n",
+        parse_mode="HTML",
+    )
+    return
 
 
 # Onboarding
@@ -223,6 +306,9 @@ def main():
     app = ApplicationBuilder().token(os.getenv('TOKEN')).build()
     
     app.add_handler(onboarding_handler)
+
+    # main menu handler (general)
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, main_menu))
 
     app.add_handler(CommandHandler('start', start))
     app.add_handler(CommandHandler('cancel', cancel))
