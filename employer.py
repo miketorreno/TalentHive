@@ -263,8 +263,28 @@ async def confirm_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ),
     )
     conn.commit()
-    # await update.message.reply_text("Job posted successfully!")
-    await query.edit_message_text("Job posted successfully!")
+    
+    # Post job to the channel
+    job_message = (
+        f"📌 \t**Job Title:** \t{context.user_data['title']} \n\n"
+        # f"🏢 \t**Company:** \t{context.user_data['company_name']} \n\n"
+        f"📍 \t**Location:** \t{context.user_data['city']}, {context.user_data['country']} \n\n"
+        # f"💼 \t**Type:** \t{context.user_data['type']} \n\n"
+        f"💰 \t**Salary:** \t{context.user_data['salary']} \n\n"
+        f"📝 \t**Description:** \t{context.user_data['description']} \n\n"
+        f"📅 \t**Deadline:** \t{format_date(context.user_data['deadline'])} \n\n"
+    )
+
+    # Add an "Apply" button
+    apply_button = InlineKeyboardMarkup(
+        [[InlineKeyboardButton("Apply", callback_data=f"apply_")]]
+        # [[InlineKeyboardButton("Apply", callback_data=f"apply_{job_id}")]]
+    )
+    await context.bot.send_message(chat_id=os.getenv("CHANNEL_ID"), text=job_message, reply_markup=apply_button, parse_mode="Markdown")
+
+    await query.edit_message_text("Job posted successfully and shared to the channel!")
+    
+    # await query.edit_message_text("Job posted successfully!")
     return ConversationHandler.END
 
 
