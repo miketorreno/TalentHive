@@ -248,6 +248,7 @@ async def confirm_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
         INSERT INTO jobs (company_id, user_id, category_id, title, description, requirements, city, country, salary, deadline)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        RETURNING job_id
         """,
         (
             context.user_data["company_id"],
@@ -262,6 +263,7 @@ async def confirm_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data["deadline"],
         ),
     )
+    job_id = cur.fetchone()[0]
     conn.commit()
     
     # Post job to the channel
@@ -272,15 +274,30 @@ async def confirm_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # f"💼 \t**Type:** \t{context.user_data['type']} \n\n"
         f"💰 \t**Salary:** \t{context.user_data['salary']} \n\n"
         f"📝 \t**Description:** \t{context.user_data['description']} \n\n"
-        f"📅 \t**Deadline:** \t{format_date(context.user_data['deadline'])} \n\n"
+        f"📅 \t**Deadline:** \t{context.user_data['deadline']} \n\n"
+        # f"📅 \t**Deadline:** \t{format_date(context.user_data['deadline'])} \n\n"
     )
 
+    # Generate a deep link to the Applicant Bot
+    deep_link_url = f"https://t.me/TalenHiveBot?start=apply_{job_id}"
+
+    # Create an InlineKeyboardButton with a URL
+    apply_button = InlineKeyboardButton("Apply", url=deep_link_url)
+    reply_markup = InlineKeyboardMarkup([[apply_button]])
+
+
     # Add an "Apply" button
-    apply_button = InlineKeyboardMarkup(
-        [[InlineKeyboardButton("Apply", callback_data=f"apply_")]]
-        # [[InlineKeyboardButton("Apply", callback_data=f"apply_{job_id}")]]
+    # apply_button = InlineKeyboardMarkup(
+    #     [[InlineKeyboardButton("Apply", callback_data=f"apply_")]]
+    #     # [[InlineKeyboardButton("Apply", callback_data=f"apply_{job_id}")]]
+    # )
+    
+    await context.bot.send_message(
+        chat_id=os.getenv("CHANNEL_ID"), 
+        text=job_message, 
+        reply_markup=reply_markup, 
+        parse_mode="Markdown"
     )
-    await context.bot.send_message(chat_id=os.getenv("CHANNEL_ID"), text=job_message, reply_markup=apply_button, parse_mode="Markdown")
 
     await query.edit_message_text("Job posted successfully and shared to the channel!")
     

@@ -33,10 +33,7 @@ current_saved_job_index = 0
 
 # Start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    telegram_id = update.effective_user.id
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE telegram_id = %s AND role_id = 1", (telegram_id,))
-    user = cur.fetchone()
+    user = get_user(update, context)
     
     if not user:
         keyboard = [
@@ -52,20 +49,25 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return REGISTER
     else:
-        keyboard = [
-            ["Browse Jobs", "Saved Jobs"],
-            ["My Profile", "My Applications"],
-            ["Job Notifications", "Help"]
-        ]
-        await update.message.reply_text(
-            text=f"<b>Hello {user[3]} 👋\t Welcome to HulumJobs!</b> \n\n"
-                "<b>👤 \tMy Profile</b>:\t manage your profile \n\n"
-                "<b>📑 \tMy Applications</b>:\t view and track your applications \n\n"
-                "<b>🔔 \tJob Notifications</b>:\t customize notifications you wanna receive \n\n"
-                "<b>❓ \tHelp</b>:\t show help message \n\n",
-            reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True),
-            parse_mode='HTML'
-        )
+        args = context.args
+        if args and args[0].startswith("apply_"):
+            job_id = args[0].split("_")[1]
+            await show_job(update, context, job_id)
+        else:
+            keyboard = [
+                ["Browse Jobs", "Saved Jobs"],
+                ["My Profile", "My Applications"],
+                ["Job Notifications", "Help"]
+            ]
+            await update.message.reply_text(
+                text=f"<b>Hello {user[3]} 👋\t Welcome to HulumJobs!</b> \n\n"
+                    "<b>👤 \tMy Profile</b>:\t manage your profile \n\n"
+                    "<b>📑 \tMy Applications</b>:\t view and track your applications \n\n"
+                    "<b>🔔 \tJob Notifications</b>:\t customize notifications you wanna receive \n\n"
+                    "<b>❓ \tHelp</b>:\t show help message \n\n",
+                reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True),
+                parse_mode='HTML'
+            )
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -93,6 +95,28 @@ async def main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await help(update, context)
     else:
         await update.message.reply_text("Please use the buttons below to navigate.")
+
+
+async def show_job(update: Update, context: ContextTypes.DEFAULT_TYPE, job_id: str):
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM jobs WHERE job_id = %s", (job_id,))
+    job = cur.fetchone()
+    
+    if not job:
+        await update.message.reply_text("Job not found.")
+        return
+    
+    job_details = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \t{job[6]} \n\n"
+
+    keyboard = [
+        [InlineKeyboardButton("Apply", callback_data=f'apply_{job[0]}')]
+    ]
+
+    await update.message.reply_text(
+        text=job_details,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='HTML'
+    )
 
 
 async def browse_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
