@@ -266,17 +266,23 @@ async def confirm_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
     job_id = cur.fetchone()[0]
     conn.commit()
     
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM jobs WHERE job_id = %s", (job_id,))
+    job = cur.fetchone()
+
+    job_message = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \t{job[6]} \n\n"
+
     # Post job to the channel
-    job_message = (
-        f"📌 \t**Job Title:** \t{context.user_data['title']} \n\n"
-        # f"🏢 \t**Company:** \t{context.user_data['company_name']} \n\n"
-        f"📍 \t**Location:** \t{context.user_data['city']}, {context.user_data['country']} \n\n"
-        # f"💼 \t**Type:** \t{context.user_data['type']} \n\n"
-        f"💰 \t**Salary:** \t{context.user_data['salary']} \n\n"
-        f"📝 \t**Description:** \t{context.user_data['description']} \n\n"
-        f"📅 \t**Deadline:** \t{context.user_data['deadline']} \n\n"
-        # f"📅 \t**Deadline:** \t{format_date(context.user_data['deadline'])} \n\n"
-    )
+    # job_message = (
+    #     f"📌 \t**Job Title:** \t{context.user_data['title']} \n\n"
+    #     # f"🏢 \t**Company:** \t{context.user_data['company_name']} \n\n"
+    #     f"📍 \t**Location:** \t{context.user_data['city']}, {context.user_data['country']} \n\n"
+    #     # f"💼 \t**Type:** \t{context.user_data['type']} \n\n"
+    #     f"💰 \t**Salary:** \t{context.user_data['salary']} \n\n"
+    #     f"📝 \t**Description:** \t{context.user_data['description']} \n\n"
+    #     f"📅 \t**Deadline:** \t{context.user_data['deadline']} \n\n"
+    #     # f"📅 \t**Deadline:** \t{format_date(context.user_data['deadline'])} \n\n"
+    # )
 
     # Generate a deep link to the Applicant Bot
     deep_link_url = f"https://t.me/TalenHiveBot?start=apply_{job_id}"
@@ -296,7 +302,7 @@ async def confirm_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id=os.getenv("CHANNEL_ID"), 
         text=job_message, 
         reply_markup=reply_markup, 
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
 
     await query.edit_message_text("Job posted successfully and shared to the channel!")

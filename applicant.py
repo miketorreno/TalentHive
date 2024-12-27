@@ -28,7 +28,9 @@ conn = psycopg2.connect(
 REGISTER, REGISTER_NAME, REGISTER_EMAIL, REGISTER_PHONE, REGISTER_GENDER, REGISTER_DOB, REGISTER_COUNTRY, REGISTER_CITY, CONFIRMATION, CHOOSE_ACTION, COVER_LETTER, NEW_CV, CONFIRM_APPLY = range(13)
 
 current_job_index = 0
+total_jobs = 0
 current_saved_job_index = 0
+total_saved_jobs = 0
 
 
 # Start
@@ -103,7 +105,10 @@ async def show_job(update: Update, context: ContextTypes.DEFAULT_TYPE, job_id: s
     job = cur.fetchone()
     
     if not job:
-        await update.message.reply_text("Job not found.")
+        if update.callback_query:
+            await update.callback_query.answer("Job not found.")
+        else:
+            await update.message.reply_text("Job not found.")
         return
     
     job_details = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \t{job[6]} \n\n"
@@ -112,54 +117,86 @@ async def show_job(update: Update, context: ContextTypes.DEFAULT_TYPE, job_id: s
         [InlineKeyboardButton("Apply", callback_data=f'apply_{job[0]}')]
     ]
 
-    await update.message.reply_text(
-        text=job_details,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode='HTML'
-    )
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            text=job_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+    else:
+        await update.message.reply_text(
+            text=job_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
 
 
 async def browse_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cur = conn.cursor()
-    cur.execute("SELECT * FROM jobs ORDER BY created_at DESC LIMIT 25")
+    cur.execute("SELECT * FROM jobs ORDER BY created_at DESC LIMIT 50")
     jobs = cur.fetchall()
     
     if not jobs:
-        await update.message.reply_text("No jobs available at the moment.")
+        if update.callback_query:
+            await update.callback_query.edit_message_text("No jobs available at the moment.")
+        else:
+            await update.message.reply_text("No jobs available at the moment.")
+            print("\n from update.message \n")
         return
 
     job_list = [job for job in jobs]
     global current_job_index
     job = job_list[current_job_index]
+    global total_jobs
+    total_jobs = len(job_list)
     # current_job_index = 0  # Reset index when starting
     
-    job_details = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \t{job[6]} \n\n"
+    # job_details = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \t{job[6]} \n\n"
+    
+    job_details = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \n{job[6]} \n\n<b>Requirements</b>: \n{job[7]} \n\n"
+    
 
     # keyboard = []
     # if current_job_index > 0:
     #     keyboard.append([InlineKeyboardButton("Previous", callback_data='job_previous')])
     # if current_job_index < len(job_list) - 1:
     #     keyboard.append([InlineKeyboardButton("Next", callback_data='job_next')])
-
-    if current_job_index > 0:
-        keyboard = [
-            [
-                InlineKeyboardButton("Previous", callback_data='job_previous'),
-                InlineKeyboardButton("Next", callback_data='job_next'),
-            ],
-            [InlineKeyboardButton("Apply", callback_data=f'apply_{job[0]}')]
-        ]
+    
+    if total_jobs > 1:
+        if current_job_index > 0:
+            keyboard = [
+                [
+                    InlineKeyboardButton("Previous", callback_data='job_previous'),
+                    InlineKeyboardButton("Next", callback_data='job_next'),
+                ],
+                [InlineKeyboardButton("Apply", callback_data=f'apply_{job[0]}')]
+            ]
+            if total_jobs == current_job_index + 1:
+                keyboard = [
+                    [InlineKeyboardButton("Previous", callback_data='job_previous')],
+                    [InlineKeyboardButton("Apply", callback_data=f'apply_{job[0]}')]
+                ]
+        else:
+            keyboard = [
+                [InlineKeyboardButton("Next", callback_data='job_next')],
+                [InlineKeyboardButton("Apply", callback_data=f'apply_{job[0]}')]
+            ]
     else:
-        keyboard = [
-            [InlineKeyboardButton("Next", callback_data='job_next')],
-            [InlineKeyboardButton("Apply", callback_data=f'apply_{job[0]}')]
-        ]
+        keyboard = []
 
-    await update.message.reply_text(
-        text=job_details,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode='HTML'
-    )
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            text=job_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+    else:
+        await update.message.reply_text(
+            text=job_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+    return
 
 
 async def next_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -172,7 +209,7 @@ async def next_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == 'job_previous':
         current_job_index -= 1
 
-    await browse_jobs(query, context)
+    await browse_jobs(update, context)
 
 
 async def next_saved_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -199,38 +236,79 @@ async def apply_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     
     await query.edit_message_text(
-        "Please enter your cover letter or click skip",
+        "Please write cover letter or click skip \n<i>*enter less than 500 characters</i>",
         reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='HTML'
     )
     return COVER_LETTER
 
 
 async def cover_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['cover_letter'] = update.message.text
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM jobs WHERE job_id = %s", (context.user_data['job_id'],))
+    job = cur.fetchone()
+    
+    job_details = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \n{job[6]} \n\n<b>Requirements</b>: \n{job[7]} \n\n"
+    
     keyboard = [
-        [InlineKeyboardButton("Skip", callback_data='skip_new_cv')],
+        [InlineKeyboardButton("Confirm", callback_data='confirm_apply')],
+        [InlineKeyboardButton("Cancel", callback_data='cancel_apply')],
     ]
     
     await update.message.reply_text(
-        "Would you like to submit a new CV",
+        f"{job_details}"
+        f"<b>__________________</b>\n\n"
+        f"<b>Cover Letter</b> \n{context.user_data['cover_letter']}\n\n\n"
+        f"<b>Apply for the job?</b>",
         reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='HTML'
     )
-    return NEW_CV
+    return CONFIRM_APPLY
+    # keyboard = [
+    #     [InlineKeyboardButton("Skip", callback_data='skip_new_cv')],
+    # ]
+    
+    # await update.message.reply_text(
+    #     "Would you like to submit a new CV",
+    #     reply_markup=InlineKeyboardMarkup(keyboard),
+    # )
+    # return NEW_CV
 
 
 async def skip_cover_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     context.user_data['cover_letter'] = None
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM jobs WHERE job_id = %s", (context.user_data['job_id'],))
+    job = cur.fetchone()
+    
+    job_details = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \n{job[6]} \n\n<b>Requirements</b>: \n{job[7]} \n\n"
+    
     keyboard = [
-        [InlineKeyboardButton("Skip", callback_data='skip_new_cv')],
+        [InlineKeyboardButton("Confirm", callback_data='confirm_apply')],
+        [InlineKeyboardButton("Cancel", callback_data='cancel_apply')],
     ]
     
     await query.edit_message_text(
-        "Would you like to submit a new CV",
+        f"{job_details}"
+        f"<b>__________________</b>\n\n"
+        f"<b>Cover Letter</b> \n{context.user_data['cover_letter']}\n\n\n"
+        f"<b>Apply for the job?</b>",
         reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='HTML'
     )
-    return NEW_CV
+    return CONFIRM_APPLY
+    # keyboard = [
+    #     [InlineKeyboardButton("Skip", callback_data='skip_new_cv')],
+    # ]
+    
+    # await query.edit_message_text(
+    #     "Would you like to submit a new CV",
+    #     reply_markup=InlineKeyboardMarkup(keyboard),
+    # )
+    # return NEW_CV
 
 
 async def new_cv(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -282,12 +360,12 @@ async def confirm_apply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cur.execute("SELECT * FROM applications WHERE job_id = %s AND user_id = %s", (context.user_data['job_id'], user[0]))
     duplicate = cur.fetchone()
     if duplicate:
-        await query.edit_message_text("You have already applied for this job.")
+        await query.edit_message_text("You've already applied for this job.")
         return ConversationHandler.END
     
     cur.execute(
-        "INSERT INTO applications (job_id, user_id, cover_letter, cv) VALUES (%s, %s, %s, %s)",
-        (context.user_data['job_id'], user[0], context.user_data['cover_letter'], context.user_data['new_cv']),
+        "INSERT INTO applications (job_id, user_id, cover_letter) VALUES (%s, %s, %s)",
+        (context.user_data['job_id'], user[0], context.user_data['cover_letter']),
     )
     conn.commit()
 
@@ -359,10 +437,10 @@ async def my_applications(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = cur.fetchone()
 
     cur.execute(
-        "SELECT j.*, a.* FROM applications a JOIN jobs j ON a.job_id = j.job_id WHERE a.user_id = %s ORDER BY a.created_at DESC LIMIT 25", (user[0],),
+        "SELECT j.*, a.* FROM applications a JOIN jobs j ON a.job_id = j.job_id WHERE a.user_id = %s ORDER BY a.created_at DESC LIMIT 50", (user[0],),
     )
     applications = cur.fetchall()
-
+    
     if not applications:
         if update.callback_query:
             await update.callback_query.edit_message_text("You haven't applied for any jobs yet.")
@@ -373,9 +451,11 @@ async def my_applications(update: Update, context: ContextTypes.DEFAULT_TYPE):
     application_list = [job for job in applications]
     global current_saved_job_index
     application = application_list[current_saved_job_index]
+    global total_saved_jobs
+    total_saved_jobs = len(application_list)
     # current_saved_job_index = 0  # Reset index when starting
     
-    application_details = f"\nJob Title: <b>\t{application[5]}</b> \n\nJob Type: <b>\t{application[4]}</b> \n\nWork Location: <b>\t{application[8]}, {application[9]}</b> \n\nSalary: <b>\t{application[10]}</b> \n\nDeadline: <b>\t{format_date(application[11])}</b> \n\n<b>Description</b>: \t{application[6]} \n\n<b>__________________</b>\n\n<b>Applied at</b>: \t{format_date(application[24])} \n\n<b>Application Status</b>: \t{application[23].upper()} \n\n"
+    application_details = f"\nJob Title: <b>\t{application[5]}</b> \n\nJob Type: <b>\t{application[4]}</b> \n\nWork Location: <b>\t{application[8]}, {application[9]}</b> \n\nSalary: <b>\t{application[10]}</b> \n\nDeadline: <b>\t{format_date(application[11])}</b> \n\n<b>Description</b>: \n{application[6]} \n\n<b>Requirements</b>: \n{application[7]} \n\n<b>__________________</b>\n\n<b>Applied at</b>: \t{format_date(application[24])} \n\n<b>Application Status</b>: \t{application[23].upper()} \n\n"
 
     # keyboard = []
     # if current_saved_job_index > 0:
@@ -383,17 +463,26 @@ async def my_applications(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # if current_saved_job_index < len(job_list) - 1:
     #     keyboard.append([InlineKeyboardButton("Next", callback_data='job_next')])
 
-    if current_saved_job_index > 0:
-        keyboard = [
-            [
-                InlineKeyboardButton("Previous", callback_data='saved_job_previous'),
-                InlineKeyboardButton("Next", callback_data='saved_job_next'),
-            ],
-        ]
+    if total_saved_jobs > 1:
+        if current_saved_job_index > 0:
+            keyboard = [
+                [
+                    InlineKeyboardButton("Previous", callback_data='saved_job_previous'),
+                    InlineKeyboardButton("Next", callback_data='saved_job_next'),
+                ],
+            ]
+            if total_saved_jobs == current_saved_job_index + 1:
+                keyboard = [
+                    [
+                        InlineKeyboardButton("Previous", callback_data='saved_job_previous'),
+                    ],
+                ]
+        else:
+            keyboard = [
+                [InlineKeyboardButton("Next", callback_data='saved_job_next')],
+            ]
     else:
-        keyboard = [
-            [InlineKeyboardButton("Next", callback_data='saved_job_next')],
-        ]
+        keyboard = []
 
     if update.callback_query:
         await update.callback_query.edit_message_text(
