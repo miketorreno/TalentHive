@@ -111,6 +111,8 @@ INSERT INTO jobs (company_id, user_id, category_id, type, title, description, re
 VALUES (3, 1, 4, 'On-site - Part-time', 'Full Stack Developer', 'We are looking for a full stack developer to join our team.', 'Requirements for the full stack developer:', 'Addis Ababa', 'Ethiopia', '$110,000', '2024-12-31', false);
 INSERT INTO jobs (company_id, user_id, category_id, type, title, description, requirements, city, country, salary, deadline, promoted)
 VALUES (4, 1, 2, 'Remote - Contract', 'Data Analyst', 'We are looking for a data analyst to join our team.', 'Requirements for the data analyst:', 'Remote', 'Anywhere', '$70,000', '2024-12-31', true);
+INSERT INTO jobs (company_id, user_id, category_id, type, title, description, requirements, city, country, salary, deadline, promoted)
+VALUES (4, 1, 2, 'On-site - Full-time', 'DevOps Engineer', 'We are looking for a DevOps engineer to join our team.', 'Requirements for the DevOps engineer:', 'Addis Ababa', 'Ethiopia', '$120,000', '2024-12-31', false);
 
 
 
