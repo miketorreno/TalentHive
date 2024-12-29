@@ -25,7 +25,7 @@ conn = psycopg2.connect(
 
 
 # Define states
-REGISTER, REGISTER_NAME, REGISTER_EMAIL, REGISTER_PHONE, REGISTER_GENDER, REGISTER_DOB, REGISTER_COUNTRY, REGISTER_CITY, CONFIRMATION, CHOOSE_ACTION, SELECT_COMPANY, SELECT_CATEGORY, TITLE, DESCRIPTION, REQUIREMENTS, CITY, COUNTRY, SALARY, DEADLINE, CONFIRM_JOB = range(20)
+REGISTER, REGISTER_NAME, REGISTER_EMAIL, REGISTER_PHONE, REGISTER_GENDER, REGISTER_DOB, REGISTER_COUNTRY, REGISTER_CITY, CONFIRMATION, CHOOSE_ACTION, SELECT_COMPANY, SELECT_CATEGORY, SELECT_TYPE, TITLE, DESCRIPTION, REQUIREMENTS, CITY, COUNTRY, SALARY, DEADLINE, CONFIRM_JOB = range(21)
 
 
 # Start
@@ -110,7 +110,7 @@ def fetch_categories():
 
 
 async def post_job_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Let's post a new job")
+    await update.message.reply_text("Let's post a new job.")
     user = get_user(update, context)
     
     # companies = fetch_companies(update.effective_user.id)
@@ -124,7 +124,7 @@ async def post_job_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     buttons = [[InlineKeyboardButton(company[2], callback_data=f"company_{company[0]}")] for company in companies]
     await update.message.reply_text(
-        "Please select company",
+        "Please select company:",
         reply_markup=InlineKeyboardMarkup(buttons),
     )
     return SELECT_COMPANY
@@ -140,7 +140,7 @@ async def select_company(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     company_id = query.data.split("_")[1]
     context.user_data["company_id"] = company_id
-    await query.message.reply_text("Company selected. Now select a job category:")
+    await query.message.reply_text("Company selected. Please select a job category")
     categories = fetch_categories()
     buttons = [[InlineKeyboardButton(name, callback_data=f"category_{category_id}")] for category_id, name in categories]
     await query.message.reply_text(
@@ -153,20 +153,69 @@ async def select_company(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def select_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    
+    keyboard = [
+        [
+            InlineKeyboardButton("On-site - Full-time", callback_data="On-site - Full-time"),
+            InlineKeyboardButton("On-site - Part-time", callback_data="On-site - Part-time"),
+        ],
+        [
+            InlineKeyboardButton("On-site - Contractual", callback_data="On-site - Contractual"),
+            InlineKeyboardButton("On-site - Freelance", callback_data="On-site - Freelance"),
+        ],
+        [
+            InlineKeyboardButton("On-site - Intern (Paid)", callback_data="On-site - Intern (Paid)"),
+            InlineKeyboardButton("On-site - Intern (UnPaid)", callback_data="On-site - Intern (UnPaid)"),
+        ],
+        [
+            InlineKeyboardButton("Remote - Full-time", callback_data="Remote - Full-time"),
+            InlineKeyboardButton("Remote - Part-time", callback_data="Remote - Part-time"),
+        ],
+        [
+            InlineKeyboardButton("Remote - Contractual", callback_data="Remote - Contractual"),
+            InlineKeyboardButton("Remote - Freelance", callback_data="Remote - Freelance"),
+        ],
+        [
+            InlineKeyboardButton("Remote - Intern (Paid)", callback_data="Remote - Intern (Paid)"),
+            InlineKeyboardButton("Remote - Intern (UnPaid)", callback_data="Remote - Intern (Unpaid)"),
+        ],
+    ]
 
     if not query.data.startswith("category_"):
         await query.message.reply_text("Invalid selection.")
         return SELECT_CATEGORY
-
+    
     category_id = query.data.split("_")[1]
     context.user_data["category_id"] = category_id
-    await query.message.reply_text("Category selected. Please enter the job title:")
+
+    await query.message.reply_text("Category selected. Please select job type")
+    await query.message.reply_text(
+        "Choose a job type:",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+    return SELECT_TYPE
+
+    # await query.message.reply_text("Category selected. Please enter the job title")
+    # return TITLE
+
+
+async def select_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    # if not query.data.startswith("type_"):
+    #     await query.message.reply_text("Invalid selection.")
+    #     return SELECT_TYPE
+
+    # type = query.data.split("_")[1]
+    context.user_data["type"] = query.data
+    await query.message.reply_text("Category selected. Please enter the job title")
     return TITLE
 
 
 async def collect_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["title"] = update.message.text.strip()
-    await update.message.reply_text("Great! Now enter the job description:")
+    await update.message.reply_text("Please enter the job description")
     return DESCRIPTION
 
 
@@ -190,7 +239,7 @@ async def collect_city(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def collect_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["country"] = update.message.text.strip()
-    await update.message.reply_text("What is the salary for this job? (Enter amount in USD)")
+    await update.message.reply_text("What is the salary for this job?")
     return SALARY
 
 
@@ -200,7 +249,7 @@ async def collect_salary(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Invalid salary. Please enter a numeric value.")
         return SALARY
     context.user_data["salary"] = salary
-    await update.message.reply_text("Finally, enter the application deadline (YYYY-MM-DD):")
+    await update.message.reply_text("Finally, enter the application deadline (YYYY-MM-DD)")
     return DEADLINE
 
 
@@ -246,14 +295,15 @@ async def confirm_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cur = conn.cursor()
     cur.execute(
         """
-        INSERT INTO jobs (company_id, user_id, category_id, title, description, requirements, city, country, salary, deadline)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO jobs (company_id, user_id, category_id, type, title, description, requirements, city, country, salary, deadline)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING job_id
         """,
         (
             context.user_data["company_id"],
             user[0],
             context.user_data["category_id"],
+            context.user_data["type"],
             context.user_data["title"],
             context.user_data["description"],
             context.user_data["requirements"],
@@ -267,10 +317,10 @@ async def confirm_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn.commit()
     
     cur = conn.cursor()
-    cur.execute("SELECT * FROM jobs WHERE job_id = %s", (job_id,))
+    cur.execute("SELECT j.*, c.* FROM jobs j JOIN companies c ON j.company_id = c.company_id WHERE job_id = %s", (job_id,))
     job = cur.fetchone()
-
-    job_message = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \t{job[6]} \n\n"
+    
+    job_message = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \n{job[6]} \n\n<b>Requirements</b>: \n{job[7]} \n\n<b>__________________</b>\n\n<b>{job[19]}</b> \n\n"
 
     # Post job to the channel
     # job_message = (
@@ -285,7 +335,7 @@ async def confirm_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # )
 
     # Generate a deep link to the Applicant Bot
-    deep_link_url = f"https://t.me/TalenHiveBot?start=apply_{job_id}"
+    deep_link_url = f"https://t.me/HulumJobsApplicantBot?start=apply_{job_id}"
 
     # Create an InlineKeyboardButton with a URL
     apply_button = InlineKeyboardButton("Apply", url=deep_link_url)
@@ -299,7 +349,7 @@ async def confirm_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # )
     
     await context.bot.send_message(
-        chat_id=os.getenv("CHANNEL_ID"), 
+        chat_id=os.getenv("HULUMJOBS_ETHIOIPA_CHANNEL_ID"), 
         text=job_message, 
         reply_markup=reply_markup, 
         parse_mode="HTML"
@@ -533,6 +583,7 @@ post_job_handler = ConversationHandler(
     states={
         SELECT_COMPANY: [CallbackQueryHandler(select_company)],
         SELECT_CATEGORY: [CallbackQueryHandler(select_category)],
+        SELECT_TYPE: [CallbackQueryHandler(select_type)],
         TITLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_title)],
         DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_description)],
         REQUIREMENTS: [MessageHandler(filters.TEXT & ~filters.COMMAND, collect_requirements)],
@@ -569,7 +620,7 @@ onboarding_handler = ConversationHandler(
 
 
 def main():
-    app = ApplicationBuilder().token(os.getenv('TOKEN')).build()
+    app = ApplicationBuilder().token(os.getenv('EMPLOYER_BOT_TOKEN')).build()
     
     app.add_handler(post_job_handler)
     app.add_handler(onboarding_handler)

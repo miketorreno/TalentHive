@@ -684,7 +684,7 @@ onboarding_handler = ConversationHandler(
 
 
 def main():
-    app = ApplicationBuilder().token(os.getenv('TOKEN')).build()
+    app = ApplicationBuilder().token(os.getenv('APPLICANT_BOT_TOKEN')).build()
     
     app.add_handler(CallbackQueryHandler(next_job, pattern="^job_.*"))
     app.add_handler(CallbackQueryHandler(next_saved_job, pattern="^saved_job_.*"))
