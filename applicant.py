@@ -1,4 +1,7 @@
 import os
+import re
+import sys
+import signal
 import logging
 import psycopg2
 from datetime import date, datetime
@@ -23,9 +26,33 @@ conn = psycopg2.connect(
   port="5432"
 )
 
+def shutdown_handler(signal_received, frame):
+    if conn:
+        conn.close()
+        print("Database connection closed.")
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, shutdown_handler)
+
 
 # Define states
-REGISTER, REGISTER_NAME, REGISTER_EMAIL, REGISTER_PHONE, REGISTER_GENDER, REGISTER_DOB, REGISTER_COUNTRY, REGISTER_CITY, CONFIRMATION, CHOOSE_ACTION, COVER_LETTER, NEW_CV, CONFIRM_APPLY = range(13)
+REGISTER, REGISTER_NAME, REGISTER_FIRSTNAME, REGISTER_LASTNAME, REGISTER_EMAIL, REGISTER_PHONE, REGISTER_GENDER, REGISTER_DOB, REGISTER_COUNTRY, REGISTER_CITY, CONFIRMATION, CHOOSE_ACTION, COVER_LETTER, NEW_CV, CONFIRM_APPLY = range(15)
+
+# List of cities sorted alphabetically
+CITIES = sorted([
+    "Addis Ababa", "Adama", "Adigrat", "Adwa", "Agaro", "Alaba Kulito", "Alamata", "Aleta Wendo",
+    "Ambo", "Arba Minch", "Areka", "Arsi Negele", "Assosa", "Awassa", "Axum", "Bahir Dar",
+    "Bale Robe", "Bedessa", "Bishoftu", "Boditi", "Bonga", "Burayu", "Batu", "Butajira",
+    "Chiro", "Dambacha", "Dangila", "Debre Birhan", "Debre Mark'os", "Debre Tabor", "Dessie",
+    "Dembi Dolo", "Dilla", "Dire Dawa", "Durame", "Fiche", "Finote Selam", "Gambela",
+    "Goba", "Gode", "Gimbi", "Gonder", "Haramaya", "Harar", "Hosaena", "Jimma", "Jijiga",
+    "Jinka", "Kobo", "Kombolcha", "Mekelle", "Meki", "Metu", "Mizan Teferi", "Mojo",
+    "Mota", "Nekemte", "Negele Borana", "Sawla", "Sebeta", "Shashamane", "Shire", "Sodo",
+    "Tepi", "Waliso", "Weldiya", "Welkite", "Wukro", "Yirgalem", "Ziway"
+])
+
+# Page size for the inline buttons
+PAGE_SIZE = 14  # 7 rows × 2 columns
 
 current_job_index = 0
 total_jobs = 0
@@ -59,13 +86,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard = [
                 ["Browse Jobs", "Saved Jobs"],
                 ["My Profile", "My Applications"],
-                ["Job Notifications", "Help"]
+                # ["Job Notifications", "Help"]
+                ["Help"]
             ]
             await update.message.reply_text(
-                text=f"<b>Hello {user[3]} 👋\t Welcome to HulumJobs!</b> \n\n"
+                text=f"<b>Hello {(user[3]).split()[0]} 👋\t Welcome to HulumJobs!</b> \n\n"
+                    "<b>💼 \tBrowse Jobs</b>:\t find jobs that best fit your schedule \n\n"
+                    "<b>📌 \tSaved Jobs</b>:\t your saved jobs \n\n"
                     "<b>👤 \tMy Profile</b>:\t manage your profile \n\n"
                     "<b>📑 \tMy Applications</b>:\t view and track your applications \n\n"
-                    "<b>🔔 \tJob Notifications</b>:\t customize notifications you wanna receive \n\n"
+                    # "<b>🔔 \tJob Notifications</b>:\t customize notifications you wanna receive \n\n"
                     "<b>❓ \tHelp</b>:\t show help message \n\n",
                 reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True),
                 parse_mode='HTML'
@@ -507,9 +537,11 @@ async def job_notifications(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         text=f"<b>Help</b>\n\n"
+            "<b>Browse Jobs</b> - find jobs that best fit your schedule \n\n"
+            "<b>Saved Jobs</b> - your saved jobs \n\n"
             "<b>My Profile</b> - manage your profile \n\n"
             "<b>My Applications</b> - view and track your applications \n\n"
-            "<b>Job Notifications</b> - customize notifications you wanna receive \n\n"
+            # "<b>Job Notifications</b> - customize notifications you wanna receive \n\n"
             "<b>Help</b> - show help message \n\n",
         parse_mode="HTML",
     )
@@ -519,108 +551,285 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Onboarding
 async def onboarding_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    
-    await query.edit_message_text(
-        text=f"Please enter your full name",
-        parse_mode='HTML'
-    )
-    return REGISTER_NAME
+    try:
+        query = update.callback_query
+        await query.answer()
+        
+        await query.edit_message_text(text=f"Please enter your first name")
+        return REGISTER_FIRSTNAME
+    except Exception as e:
+        await update.effective_message.reply_text(
+            "An error occurred registering. Please try again."
+        )
+        # Optionally log the error for debugging
+        print(f"Error in onboarding_start: {e}")
+        return ConversationHandler.END
 
 
-async def register_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['name'] = update.message.text
-    await update.message.reply_text("Please enter your email address")
-    return REGISTER_EMAIL
+async def register_firstname(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        firstname = update.message.text.strip()
+
+        if not firstname.isalpha():
+            await update.message.reply_text(
+                "<i>* First name should only contain alphabetic characters.</i>\n\nPlease enter your first name",
+                parse_mode='HTML'
+            )
+            return REGISTER_FIRSTNAME
+
+        context.user_data['firstname'] = firstname
+        await update.message.reply_text("Please enter your last name")
+        return REGISTER_LASTNAME
+    except Exception as e:
+        await update.message.reply_text(
+            "An error occurred while saving your first name. Please try again."
+        )
+        print(f"Error in register_firstname: {e}")
+        return ConversationHandler.END
+
+
+async def register_lastname(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        lastname = update.message.text.strip()
+
+        if not lastname.isalpha():
+            await update.message.reply_text(
+                "<i>* Last name should only contain alphabetic characters.</i>\n\nPlease enter your last name",
+                parse_mode='HTML'
+            )
+            return REGISTER_LASTNAME
+
+        context.user_data['lastname'] = lastname
+        await update.message.reply_text("Please enter your email address")
+        return REGISTER_EMAIL
+    except Exception as e:
+        await update.message.reply_text(
+            "An error occurred while saving your last name. Please try again."
+        )
+        print(f"Error in register_lastname: {e}")
+        return ConversationHandler.END
 
 
 async def register_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['email'] = update.message.text
-    await update.message.reply_text("Please enter your phone number")
-    return REGISTER_PHONE
+    try:
+        email = update.message.text.strip()
+
+        # if "@" not in email or "." not in email:
+        if not is_valid_email(email):
+            await update.message.reply_text(
+                "<i>* Invalid email format.</i>\n\nPlease enter your email address",
+                parse_mode='HTML'
+            )
+            return REGISTER_EMAIL
+        
+        context.user_data['email'] = email
+        await update.message.reply_text("Please enter your phone number")
+        return REGISTER_PHONE
+    except Exception as e:
+        await update.message.reply_text(
+            "An error occurred while saving your email address. Please try again."
+        )
+        print(f"Error in register_email: {e}")
+        return ConversationHandler.END
 
 
 async def register_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['phone'] = update.message.text
-    keyboard = [
-        [InlineKeyboardButton("Male", callback_data='male'), InlineKeyboardButton("Female", callback_data='female')],
-        [InlineKeyboardButton("Skip", callback_data='skip')],
-    ]
-    await update.message.reply_text(
-        "Please choose your gender", 
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
-    return REGISTER_GENDER
+    try:
+        phone = update.message.text.strip()
+        
+        if not phone.isdigit() or len(phone) < 9:  # Basic validation for phone numbers
+            await update.message.reply_text(
+                "<i>* Invalid phone number.</i>\n\nPlease enter your phone number",
+                parse_mode='HTML'
+            )
+            return REGISTER_PHONE
+        
+        context.user_data['phone'] = phone
+        keyboard = [
+            [InlineKeyboardButton("Male", callback_data='male'), InlineKeyboardButton("Female", callback_data='female')],
+            [InlineKeyboardButton("Skip", callback_data='skip')],
+        ]
+        await update.message.reply_text(
+            "Please choose your gender",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return REGISTER_GENDER
+    except Exception as e:
+        await update.message.reply_text("An error occurred while saving your phone number. Please try again.")
+        print(f"Error in register_phone: {e}")
+        return ConversationHandler.END
 
 
 async def register_gender(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    context.user_data['gender'] = query.data if query.data != 'skip' else None
-    await query.edit_message_text("Please enter your date of birth OR age?")
-    return REGISTER_DOB
+    try:
+        query = update.callback_query
+        await query.answer()
+        
+        context.user_data['gender'] = query.data if query.data != 'skip' else None
+        await query.edit_message_text("Please enter your date of birth OR age")
+        return REGISTER_DOB
+    except Exception as e:
+        await update.effective_message.reply_text("An error occurred while saving your gender. Please try again.")
+        print(f"Error in register_gender: {e}")
+        return ConversationHandler.END
+
+
+# async def register_dob_age(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     try:
+#         dob_age = update.message.text.strip()
+#         if dob_age.isdigit():
+#             context.user_data['dob'] = None
+#             context.user_data['age'] = int(dob_age)
+#         else:
+#             context.user_data['age'] = None
+#             context.user_data['dob'] = dob_age
+#         await update.message.reply_text("Please choose your country")
+#         return REGISTER_COUNTRY
+#     except Exception as e:
+#         await update.message.reply_text("An error occurred while saving your date of birth or age. Please try again.")
+#         print(f"Error in register_dob_age: {e}")
+#         return ConversationHandler.END
 
 
 async def register_dob(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message:
-        context.user_data['dob'] = update.message.text
-    else:
-        context.user_data['dob'] = None
-    await update.message.reply_text("Please choose your country")
-    return REGISTER_COUNTRY
+    try:
+        if update.message:
+            context.user_data['dob'] = update.message.text.strip()
+        else:
+            context.user_data['dob'] = None
+
+        keyboard = [
+            [InlineKeyboardButton("Ethiopia", callback_data='Ethiopia')],
+            [InlineKeyboardButton("Kenya", callback_data='Kenya')],
+        ]
+        await update.message.reply_text(
+            "Please choose your country",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return REGISTER_COUNTRY
+    except Exception as e:
+        await update.message.reply_text("An error occurred while saving your date of birth. Please try again.")
+        print(f"Error in register_dob: {e}")
+        return ConversationHandler.END
 
 
 async def register_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['country'] = update.message.text
-    await update.message.reply_text("Please enter your city")
-    return REGISTER_CITY
+    try:
+        query = update.callback_query
+        await query.answer()
+        country = query.data
+        
+        # if not country.isalpha():
+        #     await query.edit_message_text("Invalid country name.")
+        #     return REGISTER_COUNTRY
+        
+        keyboard = get_all_cities()
+        context.user_data['country'] = country
+        await query.edit_message_text(
+            "Please enter your city",
+            reply_markup=keyboard
+        )
+        return REGISTER_CITY
+    except Exception as e:
+        await update.effective_message.reply_text("An error occurred while saving your country. Please try again.")
+        print(f"Error in register_country: {e}")
+        return ConversationHandler.END
 
 
 async def register_city(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['city'] = update.message.text
-    user_data = context.user_data
-    keyboard = [
-        [InlineKeyboardButton("Confirm ✅", callback_data='confirm')],
-        [InlineKeyboardButton("Start Over 🔄", callback_data='restart')],
-    ]
-    await update.message.reply_text(
-        f"<b>ACCOUNT INFORMATION</b>\n\n"
-        f"<b>Name</b>: {user_data['name']}\n\n"
-        f"<b>Email</b>: {user_data['email']}\n\n"
-        f"<b>Phone</b>: {user_data['phone']}\n\n"
-        f"<b>Gender</b>: {user_data.get('gender', '')}\n\n"
-        f"<b>Date of Birth (Age)</b>: {user_data.get('dob', '')}\n\n"
-        f"<b>Country</b>: {user_data['country']}\n\n"
-        f"<b>City</b>: {user_data['city']}\n\n"
-        f"<b>Do you confirm this information?</b>",
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode='HTML'
-    )
-    return CONFIRMATION
+    try:
+        query = update.callback_query
+        await query.answer()
+        city = query.data
+        
+        # if not re.match(r'^[A-Za-z\s]+$', city):
+        # if not city.isalpha():
+        #     await query.edit_message_text("Invalid city name.")
+        #     return REGISTER_CITY
+        
+        context.user_data['city'] = city
+        user_data = context.user_data
+        keyboard = [
+            [InlineKeyboardButton("Confirm ✅", callback_data='confirm')],
+            [InlineKeyboardButton("Start Over 🔄", callback_data='restart')],
+        ]
+        await query.edit_message_text(
+            f"<b>ACCOUNT INFORMATION</b>\n\n"
+            f"<b>Name</b>: {user_data['firstname']} {user_data['lastname']}\n"
+            f"<b>Email</b>: {user_data['email']}\n"
+            f"<b>Phone</b>: {user_data['phone']}\n"
+            f"<b>Gender</b>: {user_data.get('gender', 'Not provided')}\n"
+            f"<b>Date of Birth (Age)</b>: {user_data.get('dob', 'Not provided')}\n"
+            f"<b>Country</b>: {user_data['country']}\n"
+            f"<b>City</b>: {user_data['city']}\n\n"
+            f"<b>Do you confirm this information?</b>",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+        return CONFIRMATION
+    except Exception as e:
+        await update.effective_message.reply_text("An error occurred while saving your city. Please try again.")
+        print(f"Error in register_city: {e}")
+        return ConversationHandler.END
 
 
 async def confirm_registration(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    
-    telegram_id = update.effective_user.id
-    username = update.effective_user.username
-    role_id = 1  # Assuming role_id is 1 for the applicant role
-    
-    if query.data == 'confirm':
-        user_data = context.user_data
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO users (telegram_id, role_id, name, username, email, phone, gender, dob, country, city) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-            (telegram_id, role_id, user_data['name'], username, user_data['email'], user_data['phone'],
-             user_data.get('gender'), user_data.get('dob'), user_data['country'], user_data['city'])
-        )
-        conn.commit()
+    try:
+        query = update.callback_query
+        await query.answer()
+        
+        if query.data == 'confirm':
+            user_data = context.user_data
+            telegram_id = update.effective_user.id
+            username = update.effective_user.username
+            role_id = 1  # Assuming role_id is 1 for the applicant role
 
-        await query.edit_message_text("🎉 Registration complete! Welcome to HulumJobs!")
-    elif query.data == 'restart':
-        await query.edit_message_text("Let's start over. Use /start to begin again.")
-    return ConversationHandler.END
+            try:
+                cur = conn.cursor()
+                cur.execute(
+                    "INSERT INTO users (telegram_id, role_id, name, username, email, phone, gender, dob, country, city) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                    (telegram_id, role_id, f"{user_data['firstname']} {user_data['lastname']}", username, user_data['email'], user_data['phone'],
+                     user_data.get('gender'), user_data.get('dob'), user_data['country'], user_data['city'])
+                )
+                conn.commit()
+                cur.close()
+            except Exception as db_error:
+                await query.edit_message_text("An error occurred while saving your data to the database. Please try again.")
+                print(f"Database error in confirm_registration: {db_error}")
+                return ConversationHandler.END
+
+            await query.edit_message_text("🎉 Registration complete! Welcome to HulumJobs!")
+        elif query.data == 'restart':
+            await query.edit_message_text("Let's start over. Use /start to begin again.")
+        return ConversationHandler.END
+    except Exception as e:
+        await query.edit_message_text("An error occurred during confirmation. Please try again.")
+        print(f"Error in confirm_registration: {e}")
+        return ConversationHandler.END
+
+
+# async def confirm_registration_old(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     query = update.callback_query
+#     await query.answer()
+    
+#     telegram_id = update.effective_user.id
+#     username = update.effective_user.username
+#     role_id = 1  # Assuming role_id is 1 for the applicant role
+    
+#     if query.data == 'confirm':
+#         user_data = context.user_data
+#         cur = conn.cursor()
+#         cur.execute(
+#             "INSERT INTO users (telegram_id, role_id, name, username, email, phone, gender, dob, country, city) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+#             (telegram_id, role_id, {user_data['firstname'] + ' ' + user_data['lastname']}, username, user_data['email'], user_data['phone'],
+#              user_data.get('gender'), user_data.get('dob'), user_data['country'], user_data['city'])
+#         )
+#         conn.commit()
+
+#         await query.edit_message_text("🎉 Registration complete! Welcome to HulumJobs!")
+#     elif query.data == 'restart':
+#         await query.edit_message_text("Let's start over. Use /start to begin again.")
+#     return ConversationHandler.END
 
 
 # Cancel command
@@ -641,6 +850,53 @@ def get_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def format_date(date):
     return date.strftime("%B %d, %Y")
+
+
+def is_valid_email(email):
+    # regex pattern for validating an email
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return bool(re.match(pattern, email))
+
+
+def get_all_cities():
+    buttons = [
+        InlineKeyboardButton(city, callback_data=f"{city}") for city in CITIES
+    ]
+
+    # Organize buttons into 2-column rows
+    keyboard = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]  # Group buttons into rows
+    keyboard.append([InlineKeyboardButton("Others", callback_data="Others")]),
+
+    return InlineKeyboardMarkup(keyboard)
+
+
+def get_city_keyboard(page=0):
+    """Generate inline keyboard for cities with pagination."""
+    start_index = page * PAGE_SIZE
+    end_index = start_index + PAGE_SIZE
+    cities_page = CITIES[start_index:end_index]
+
+    # Create buttons for cities
+    buttons = [
+        InlineKeyboardButton(city, callback_data=f"city_{city}") for city in cities_page
+    ]
+
+    # Organize buttons into 2-column rows
+    keyboard = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]  # [CHANGE] Group buttons into rows
+
+    # Pagination buttons
+    navigation_buttons = []
+    if page > 0:  # [CHANGE] Add Prev button if applicable
+        navigation_buttons.append(InlineKeyboardButton("⬅️ Prev", callback_data=f"citypage_{page - 1}"))
+    if end_index < len(CITIES):  # [CHANGE] Add Next button if applicable
+        navigation_buttons.append(InlineKeyboardButton("Next ➡️", callback_data=f"citycitypage_{page + 1}"))
+
+    # Add navigation buttons as a row if present
+    if navigation_buttons:  # [CHANGE] Ensure navigation buttons are added as a valid row
+        keyboard.append(navigation_buttons)
+
+    return InlineKeyboardMarkup(keyboard)  # [CHANGE] Correctly return a structured keyboard
+
 
 
 
@@ -669,13 +925,15 @@ onboarding_handler = ConversationHandler(
     entry_points=[CallbackQueryHandler(onboarding_start, 'register')],
     states={
         REGISTER: [CallbackQueryHandler(onboarding_start)],
-        REGISTER_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, register_name)],
+        # REGISTER_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, register_name)],
+        REGISTER_FIRSTNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, register_firstname)],
+        REGISTER_LASTNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, register_lastname)],
         REGISTER_EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, register_email)],
         REGISTER_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, register_phone)],
         REGISTER_GENDER: [CallbackQueryHandler(register_gender)],
         REGISTER_DOB: [MessageHandler(filters.TEXT & ~filters.COMMAND, register_dob)],
-        REGISTER_COUNTRY: [MessageHandler(filters.TEXT & ~filters.COMMAND, register_country)],
-        REGISTER_CITY: [MessageHandler(filters.TEXT & ~filters.COMMAND, register_city)],
+        REGISTER_COUNTRY: [CallbackQueryHandler(register_country)],
+        REGISTER_CITY: [CallbackQueryHandler(register_city)],
         CONFIRMATION: [CallbackQueryHandler(confirm_registration)],
     },
     fallbacks=[CommandHandler('cancel', onboarding_cancel)],
@@ -686,6 +944,7 @@ onboarding_handler = ConversationHandler(
 def main():
     app = ApplicationBuilder().token(os.getenv('APPLICANT_BOT_TOKEN')).build()
     
+    # app.add_handler(CallbackQueryHandler(register_country, pattern="^citypage_.*"))
     app.add_handler(CallbackQueryHandler(next_job, pattern="^job_.*"))
     app.add_handler(CallbackQueryHandler(next_saved_job, pattern="^saved_job_.*"))
 
