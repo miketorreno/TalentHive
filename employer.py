@@ -562,7 +562,11 @@ async def onboarding_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Helpers
 def get_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    telegram_id = update.effective_user.id
+    if update.callback_query:
+        telegram_id = update.callback_query.from_user.id
+    else:
+        telegram_id = update.effective_user.id
+
     cur = conn.cursor()
     cur.execute("SELECT * FROM users WHERE telegram_id = %s AND role_id = 2", (telegram_id,))
     user = cur.fetchone()

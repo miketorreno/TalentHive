@@ -427,7 +427,8 @@ async def portfolio(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{job_details}"
         f"<b>__________________</b>\n\n"
         f"<b>Cover Letter</b> \n{context.user_data['cover_letter']}\n\n"
-        f"<b>CV</b> \n✅\n\n"
+        f"{'<b>CV Uploaded</b> \n✅ \n\n' if context.user_data['new_cv'] else ''}"
+        # f"<b>CV</b> \n✅\n\n"
         # f"<b>CV</b> \n{file.file_path}\n\n"
         # f"<b>CV</b> \n{context.user_data['new_cv']}\n\n"
         f"<b>Portfolio(s)</b> \n{context.user_data['portfolio']}\n\n\n"
@@ -476,7 +477,7 @@ async def skip_portfolio(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{job_details}"
         f"<b>__________________</b>\n\n"
         f"<b>Cover Letter</b> \n{context.user_data['cover_letter']}\n\n"
-        f"<b>CV</b> \n✅\n\n"
+        f"{'<b>CV Uploaded</b> \n✅ \n\n' if context.user_data['new_cv'] else ''}"
         # f"<b>CV</b> \n{file.file_path}\n\n"
         # f"<b>CV</b> \n{context.user_data['new_cv']}\n\n"
         f"<b>Portfolio(s)</b> \n{context.user_data['portfolio']}\n\n\n"
@@ -508,11 +509,9 @@ async def skip_portfolio(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def confirm_apply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    telegram_id = update.effective_user.id
     cur = conn.cursor()
     
-    cur.execute("SELECT * FROM users WHERE telegram_id = %s AND role_id = 1", (telegram_id,))
-    user = cur.fetchone()
+    user = get_user(update, context)
     
     # checking duplicate
     cur.execute("SELECT * FROM applications WHERE job_id = %s AND user_id = %s", (context.user_data['job_id'], user[0]))
@@ -560,15 +559,9 @@ async def cancel_apply(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def saved_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.callback_query:
-        telegram_id = update.callback_query.from_user.id
-    else:
-        telegram_id = update.effective_user.id
-        
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE telegram_id = %s AND role_id = 1", (telegram_id,))
-    user = cur.fetchone()
+    user = get_user(update, context)
 
+    cur = conn.cursor()
     cur.execute(
         "SELECT j.*, sj.* FROM saved_jobs sj JOIN jobs j ON sj.job_id = j.job_id WHERE sj.user_id = %s ORDER BY sj.created_at DESC LIMIT 50", (user[0],),
     )
@@ -584,10 +577,7 @@ async def saved_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def my_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    telegram_id = update.effective_user.id
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE telegram_id = %s AND role_id = 1", (telegram_id,))
-    user = cur.fetchone()
+    user = get_user(update, context)
     
     await update.message.reply_text(
         text=f"<b>My Profile</b> \n\n"
@@ -605,15 +595,9 @@ async def my_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def my_applications(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.callback_query:
-        telegram_id = update.callback_query.from_user.id
-    else:
-        telegram_id = update.effective_user.id
-        
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE telegram_id = %s AND role_id = 1", (telegram_id,))
-    user = cur.fetchone()
+    user = get_user(update, context)
 
+    cur = conn.cursor()
     cur.execute(
         "SELECT j.*, a.* FROM applications a JOIN jobs j ON a.job_id = j.job_id WHERE a.user_id = %s ORDER BY a.created_at DESC LIMIT 50", (user[0],),
     )
@@ -633,7 +617,7 @@ async def my_applications(update: Update, context: ContextTypes.DEFAULT_TYPE):
     total_saved_jobs = len(application_list)
     # current_saved_job_index = 0  # Reset index when starting
     
-    application_details = f"\nJob Title: <b>\t{application[5]}</b> \n\nJob Type: <b>\t{application[4]}</b> \n\nWork Location: <b>\t{application[8]}, {application[9]}</b> \n\nSalary: <b>\t{application[10]}</b> \n\nDeadline: <b>\t{format_date(application[11])}</b> \n\n<b>Description</b>: \n{application[6]} \n\n<b>Requirements</b>: \n{application[7]} \n\n<b>__________________</b>\n\n<b>Applied at</b>: \t{format_date(application[24])} \n\n<b>Application Status</b>: \t{application[23].upper()} \n\n"
+    application_details = f"\nJob Title: <b>\t{application[5]}</b> \n\nJob Type: <b>\t{application[4]}</b> \n\nWork Location: <b>\t{application[8]}, {application[9]}</b> \n\nSalary: <b>\t{application[10]}</b> \n\nDeadline: <b>\t{format_date(application[11])}</b> \n\n<b>Description</b>: \n{application[6]} \n\n<b>Requirements</b>: \n{application[7]} \n\n<b>__________________</b>\n\n<b>Applied at</b>: \t{format_date(application[25])} \n\n<b>Application Status</b>: \t{application[24].upper()} \n\n"
 
     # keyboard = []
     # if current_saved_job_index > 0:
@@ -1082,7 +1066,11 @@ async def redirect_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ? HELPERS (will be extracted to a separate helpers.py file)
 def get_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    telegram_id = update.effective_user.id
+    if update.callback_query:
+        telegram_id = update.callback_query.from_user.id
+    else:
+        telegram_id = update.effective_user.id
+    
     cur = conn.cursor()
     cur.execute("SELECT * FROM users WHERE telegram_id = %s AND role_id = 1", (telegram_id,))
     user = cur.fetchone()

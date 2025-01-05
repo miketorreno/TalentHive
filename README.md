@@ -28,8 +28,8 @@ Telegram bot that allows recruiters to post jobs and job seekers to browse & app
 ## Fixes
 
 - [ ] When user uploads new cv while it only checks for docs & text ... it won't respond to other file types. Just add a check for the rest types & change the filter on `MessageHandler(filters.Document.ALL & ~filters.COMMAND, new_cv),`
-- [ ] use `get_user(update, context)` helper function whenever you need to get the user object
-  - [ ] on applicant bot
+- [X] use `get_user(update, context)` helper function whenever you need to get the user object
+  - [x] on applicant bot
   - [x] on employer bot
 - [ ] use `get_job(update, context)` helper function whenever you need to get a job object
   - [ ] on applicant bot
