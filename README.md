@@ -15,11 +15,14 @@ Telegram bot that allows recruiters to post jobs and job seekers to browse & app
 
 ## Roadmap
 
+- [ ] Write tests
+  - [ ] Unit tests
+  - [ ] Integration tests
+  - [ ] End-to-end tests
 - [ ] Improve the UX
   - [ ] Add datepicker package for job posting
   - [ ] Add awesome data display package
   - [ ] Add conventional price range picker package
-- [ ] Add tests
 - [ ] Integrate Redis (for blazingly fast experience) - No one is patient
 - [ ] Add more features
 - [ ] Add more documentation
@@ -38,7 +41,7 @@ Telegram bot that allows recruiters to post jobs and job seekers to browse & app
 - [ ] Implement input validation for all fields the way you did for the `salary` field when posting a job
   - [x] on applicant bot
   - [ ] on employer bot
-- [ ] Add exception handling for DB queries
+- [ ] Add exception handling for ALL DB queries
   - [ ] on applicant bot
   - [ ] on employer bot
 - [ ] User check is very very redundant (research a better way to do it) - Possibly if you check user registration status & fetch it's data at the beginning it'll be a whole lot better and faster
@@ -49,6 +52,7 @@ Telegram bot that allows recruiters to post jobs and job seekers to browse & app
 - [ ] Fix performance issues
 - [ ] Fix security vulnerabilities
 - [ ] Add "You sure?" kinda prompt before canceling job posting, onboarding, applying, etc.
+
 
 
 ## Ideas, for the round table
