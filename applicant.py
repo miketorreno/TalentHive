@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import json
 import signal
 import logging
 import psycopg2
@@ -36,7 +37,7 @@ signal.signal(signal.SIGINT, shutdown_handler)
 
 
 # Define states
-REGISTER, REGISTER_NAME, REGISTER_FIRSTNAME, REGISTER_LASTNAME, REGISTER_EMAIL, REGISTER_PHONE, REGISTER_GENDER, REGISTER_DOB, REGISTER_COUNTRY, REGISTER_CITY, CONFIRMATION, CHOOSE_ACTION, COVER_LETTER, NEW_CV, CONFIRM_APPLY = range(15)
+REGISTER, REGISTER_NAME, REGISTER_FIRSTNAME, REGISTER_LASTNAME, REGISTER_EMAIL, REGISTER_PHONE, REGISTER_GENDER, REGISTER_DOB, REGISTER_COUNTRY, REGISTER_CITY, CONFIRMATION, CHOOSE_ACTION, COVER_LETTER, NEW_CV, PORTFOLIO, CONFIRM_APPLY = range(16)
 
 # List of cities sorted alphabetically
 CITIES = sorted([
@@ -265,12 +266,10 @@ async def apply_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     context.user_data['job_id'] = int(query.data.split("_")[-1])
-    keyboard = [
-        [InlineKeyboardButton("Skip", callback_data='skip_cover_letter')],
-    ]
+    keyboard = [[InlineKeyboardButton("Skip", callback_data='skip_cover_letter')]]
     
     await query.edit_message_text(
-        "Please write cover letter or click skip \n<i>*enter less than 500 characters</i>",
+        "Please write cover letter or click skip \n\n<i>*enter less than 500 characters</i>",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode='HTML'
     )
@@ -279,116 +278,240 @@ async def apply_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cover_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['cover_letter'] = update.message.text
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM jobs WHERE job_id = %s", (context.user_data['job_id'],))
-    job = cur.fetchone()
     
-    job_details = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \n{job[6]} \n\n<b>Requirements</b>: \n{job[7]} \n\n"
-    
-    keyboard = [
-        [InlineKeyboardButton("Confirm", callback_data='confirm_apply')],
-        [InlineKeyboardButton("Cancel", callback_data='cancel_apply')],
-    ]
-    
+    keyboard = [[InlineKeyboardButton("Skip", callback_data='skip_new_cv')]]
     await update.message.reply_text(
-        f"{job_details}"
-        f"<b>__________________</b>\n\n"
-        f"<b>Cover Letter</b> \n{context.user_data['cover_letter']}\n\n\n"
-        f"<b>Apply for the job?</b>",
+        "Would you like to submit a new CV \n\n<i>*please upload pdf or word document</i>",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode='HTML'
     )
-    return CONFIRM_APPLY
+    return NEW_CV
+    # # cur = conn.cursor()
+    # # cur.execute("SELECT * FROM jobs WHERE job_id = %s", (context.user_data['job_id'],))
+    # # job = cur.fetchone()
+    # job = get_job(update, context, context.user_data['job_id'])
+
+    # job_details = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \n{job[6]} \n\n<b>Requirements</b>: \n{job[7]} \n\n"
+    
     # keyboard = [
-    #     [InlineKeyboardButton("Skip", callback_data='skip_new_cv')],
+    #     [InlineKeyboardButton("Confirm", callback_data='confirm_apply')],
+    #     [InlineKeyboardButton("Cancel", callback_data='cancel_apply')],
     # ]
     
     # await update.message.reply_text(
-    #     "Would you like to submit a new CV",
+    #     f"{job_details}"
+    #     f"<b>__________________</b>\n\n"
+    #     f"<b>Cover Letter</b> \n{context.user_data['cover_letter']}\n\n\n"
+    #     f"<b>Apply for the job?</b>",
     #     reply_markup=InlineKeyboardMarkup(keyboard),
+    #     parse_mode='HTML'
     # )
-    # return NEW_CV
+    # return CONFIRM_APPLY
 
 
 async def skip_cover_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     context.user_data['cover_letter'] = None
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM jobs WHERE job_id = %s", (context.user_data['job_id'],))
-    job = cur.fetchone()
     
-    job_details = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \n{job[6]} \n\n<b>Requirements</b>: \n{job[7]} \n\n"
-    
-    keyboard = [
-        [InlineKeyboardButton("Confirm", callback_data='confirm_apply')],
-        [InlineKeyboardButton("Cancel", callback_data='cancel_apply')],
-    ]
-    
+    keyboard = [[InlineKeyboardButton("Skip", callback_data='skip_new_cv')]]
     await query.edit_message_text(
-        f"{job_details}"
-        f"<b>__________________</b>\n\n"
-        f"<b>Cover Letter</b> \n{context.user_data['cover_letter']}\n\n\n"
-        f"<b>Apply for the job?</b>",
+        "Would you like to submit a new CV \n\n<i>*please upload pdf or word document</i>",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode='HTML'
     )
-    return CONFIRM_APPLY
+    return NEW_CV
+    # # cur = conn.cursor()
+    # # cur.execute("SELECT * FROM jobs WHERE job_id = %s", (context.user_data['job_id'],))
+    # # job = cur.fetchone()
+    # job = get_job(update, context, context.user_data['job_id'])
+    
+    # job_details = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \n{job[6]} \n\n<b>Requirements</b>: \n{job[7]} \n\n"
+    
     # keyboard = [
-    #     [InlineKeyboardButton("Skip", callback_data='skip_new_cv')],
+    #     [InlineKeyboardButton("Confirm", callback_data='confirm_apply')],
+    #     [InlineKeyboardButton("Cancel", callback_data='cancel_apply')],
     # ]
     
     # await query.edit_message_text(
-    #     "Would you like to submit a new CV",
+    #     f"{job_details}"
+    #     f"<b>__________________</b>\n\n"
+    #     f"<b>Cover Letter</b> \n{context.user_data['cover_letter']}\n\n\n"
+    #     f"<b>Apply for the job?</b>",
     #     reply_markup=InlineKeyboardMarkup(keyboard),
+    #     parse_mode='HTML'
     # )
-    # return NEW_CV
+    # return CONFIRM_APPLY
 
 
 async def new_cv(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['new_cv'] = update.message.text
-    keyboard = [
-        [InlineKeyboardButton("Confirm", callback_data='confirm_apply')],
-        [InlineKeyboardButton("Cancel", callback_data='cancel_apply')],
-    ]
+    if update.message.document:
+        # Validate the file type
+        file_name = update.message.document.file_name
+        if not file_name.endswith(('.pdf', '.doc', '.docx')):
+            await update.message.reply_text("Invalid file type. Please upload a PDF or Word document.")
+            return NEW_CV
+
+        # Save the file ID
+        context.user_data['new_cv'] = update.message.document.file_id
+        
+        keyboard = [[InlineKeyboardButton("Skip", callback_data='skip_portfolio')]]
+        await update.message.reply_text(
+            "Please provide portfolio links (separated by commas)",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+        return PORTFOLIO
+    else:
+        await update.message.reply_text("Please upload a valid document.")
+        return NEW_CV
+
+    # context.user_data['new_cv'] = update.message.text
     
-    await update.message.reply_text(
-        f"<b>Cover Letter</b>: {context.user_data['cover_letter']}\n\n"
-        f"<b>CV</b>: {context.user_data['new_cv']}\n\n"
-        f"<b>Apply for the job?</b>",
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode='HTML'
-    )
-    return CONFIRM_APPLY
+    # keyboard = [
+    #     [InlineKeyboardButton("Confirm", callback_data='confirm_apply')],
+    #     [InlineKeyboardButton("Cancel", callback_data='cancel_apply')],
+    # ]
+    # await update.message.reply_text(
+    #     f"<b>Cover Letter</b>: {context.user_data['cover_letter']}\n\n"
+    #     f"<b>CV</b>: {context.user_data['new_cv']}\n\n"
+    #     f"<b>Apply for the job?</b>",
+    #     reply_markup=InlineKeyboardMarkup(keyboard),
+    #     parse_mode='HTML'
+    # )
+    # return CONFIRM_APPLY
 
 
 async def skip_new_cv(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     context.user_data['new_cv'] = None
+        
+    keyboard = [[InlineKeyboardButton("Skip", callback_data='skip_portfolio')]]
+    await query.edit_message_text(
+        "Please provide portfolio links (separated by commas)",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='HTML'
+    )
+    return PORTFOLIO
+    
+    # keyboard = [
+    #     [InlineKeyboardButton("Confirm", callback_data='confirm_apply')],
+    #     [InlineKeyboardButton("Cancel", callback_data='cancel_apply')],
+    # ]
+    # await query.edit_message_text(
+    #     f"<b>Cover Letter</b>: {context.user_data['cover_letter']}\n\n"
+    #     f"<b>CV</b>: {context.user_data['new_cv']}\n\n"
+    #     f"<b>Apply for the job?</b>",
+    #     reply_markup=InlineKeyboardMarkup(keyboard),
+    #     parse_mode='HTML'
+    # )
+    # return CONFIRM_APPLY
+
+
+async def portfolio(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['portfolio'] = update.message.text.split(',') if update.message.text else []
+
+    job = get_job(update, context, context.user_data['job_id'])
+    
+    job_details = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \n{job[6]} \n\n<b>Requirements</b>: \n{job[7]} \n\n"
+    
+    # if context.user_data['new_cv']:
+    #     file = await context.bot.get_file(context.user_data['new_cv'])
+        
     keyboard = [
         [InlineKeyboardButton("Confirm", callback_data='confirm_apply')],
         [InlineKeyboardButton("Cancel", callback_data='cancel_apply')],
     ]
-    
-    await query.edit_message_text(
-        f"<b>Cover Letter</b>: {context.user_data['cover_letter']}\n\n"
-        f"<b>CV</b>: {context.user_data['new_cv']}\n\n"
+    await update.message.reply_text(
+        f"{job_details}"
+        f"<b>__________________</b>\n\n"
+        f"<b>Cover Letter</b> \n{context.user_data['cover_letter']}\n\n"
+        f"{'<b>CV Uploaded</b> \n✅ \n\n' if context.user_data['new_cv'] else ''}"
+        # f"<b>CV</b> \n✅\n\n"
+        # f"<b>CV</b> \n{file.file_path}\n\n"
+        # f"<b>CV</b> \n{context.user_data['new_cv']}\n\n"
+        f"<b>Portfolio(s)</b> \n{context.user_data['portfolio']}\n\n\n"
         f"<b>Apply for the job?</b>",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode='HTML'
     )
     return CONFIRM_APPLY
+    
+    # keyboard = [
+    #     [InlineKeyboardButton("Confirm", callback_data='confirm_apply')],
+    #     [InlineKeyboardButton("Cancel", callback_data='cancel_apply')],
+    # ]
+    # await update.message.reply_text(
+    #     f"<b>Cover Letter</b>: {context.user_data['cover_letter']}\n\n"
+    #     f"<b>CV</b>: {context.user_data['new_cv']}\n\n"
+    #     f"<b>Portfolio</b>: {context.user_data['portfolio']}\n\n"
+    #     f"<b>Apply for the job?</b>",
+    #     reply_markup=InlineKeyboardMarkup(keyboard),
+    #     parse_mode='HTML'
+    # )
+    # return CONFIRM_APPLY
+    
+    # await update.message.reply_text("Submitting your application...")
+    # await submit_application(update, context)
+    # return ConversationHandler.END
+
+
+async def skip_portfolio(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    context.user_data['portfolio'] = []
+
+    job = get_job(update, context, context.user_data['job_id'])
+    
+    job_details = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \n{job[6]} \n\n<b>Requirements</b>: \n{job[7]} \n\n"
+    
+    # if context.user_data['new_cv']:
+    #     file = await context.bot.get_file(context.user_data['new_cv'])
+        
+    keyboard = [
+        [InlineKeyboardButton("Confirm", callback_data='confirm_apply')],
+        [InlineKeyboardButton("Cancel", callback_data='cancel_apply')],
+    ]
+    await query.edit_message_text(
+        f"{job_details}"
+        f"<b>__________________</b>\n\n"
+        f"<b>Cover Letter</b> \n{context.user_data['cover_letter']}\n\n"
+        f"{'<b>CV Uploaded</b> \n✅ \n\n' if context.user_data['new_cv'] else ''}"
+        # f"<b>CV</b> \n{file.file_path}\n\n"
+        # f"<b>CV</b> \n{context.user_data['new_cv']}\n\n"
+        f"<b>Portfolio(s)</b> \n{context.user_data['portfolio']}\n\n\n"
+        f"<b>Apply for the job?</b>",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='HTML'
+    )
+    return CONFIRM_APPLY
+    
+    # keyboard = [
+    #     [InlineKeyboardButton("Confirm", callback_data='confirm_apply')],
+    #     [InlineKeyboardButton("Cancel", callback_data='cancel_apply')],
+    # ]
+    # await query.edit_message_text(
+    #     f"<b>Cover Letter</b>: {context.user_data['cover_letter']}\n\n"
+    #     f"<b>CV</b>: {context.user_data['new_cv']}\n\n"
+    #     f"<b>Portfolio</b>: {context.user_data['portfolio']}\n\n"
+    #     f"<b>Apply for the job?</b>",
+    #     reply_markup=InlineKeyboardMarkup(keyboard),
+    #     parse_mode='HTML'
+    # )
+    # return CONFIRM_APPLY
+    
+    # await query.edit_message_text("Submitting your application...")
+    # await submit_application(update, context)
+    # return ConversationHandler.END
 
 
 async def confirm_apply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    telegram_id = update.effective_user.id
     cur = conn.cursor()
     
-    cur.execute("SELECT * FROM users WHERE telegram_id = %s AND role_id = 1", (telegram_id,))
-    user = cur.fetchone()
+    user = get_user(update, context)
     
     # checking duplicate
     cur.execute("SELECT * FROM applications WHERE job_id = %s AND user_id = %s", (context.user_data['job_id'], user[0]))
@@ -398,8 +521,8 @@ async def confirm_apply(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
     
     cur.execute(
-        "INSERT INTO applications (job_id, user_id, cover_letter) VALUES (%s, %s, %s)",
-        (context.user_data['job_id'], user[0], context.user_data['cover_letter']),
+        "INSERT INTO applications (job_id, user_id, cover_letter, cv, portfolio) VALUES (%s, %s, %s, %s, %s)",
+        (context.user_data['job_id'], user[0], context.user_data['cover_letter'], context.user_data['new_cv'], json.dumps(context.user_data.get('portfolio', []))),
     )
     conn.commit()
 
@@ -436,15 +559,9 @@ async def cancel_apply(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def saved_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.callback_query:
-        telegram_id = update.callback_query.from_user.id
-    else:
-        telegram_id = update.effective_user.id
-        
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE telegram_id = %s AND role_id = 1", (telegram_id,))
-    user = cur.fetchone()
+    user = get_user(update, context)
 
+    cur = conn.cursor()
     cur.execute(
         "SELECT j.*, sj.* FROM saved_jobs sj JOIN jobs j ON sj.job_id = j.job_id WHERE sj.user_id = %s ORDER BY sj.created_at DESC LIMIT 50", (user[0],),
     )
@@ -456,13 +573,11 @@ async def saved_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await update.message.reply_text("You haven't saved any job.")
         return
+    return
 
 
 async def my_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    telegram_id = update.effective_user.id
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE telegram_id = %s AND role_id = 1", (telegram_id,))
-    user = cur.fetchone()
+    user = get_user(update, context)
     
     await update.message.reply_text(
         text=f"<b>My Profile</b> \n\n"
@@ -480,15 +595,9 @@ async def my_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def my_applications(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.callback_query:
-        telegram_id = update.callback_query.from_user.id
-    else:
-        telegram_id = update.effective_user.id
-        
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE telegram_id = %s AND role_id = 1", (telegram_id,))
-    user = cur.fetchone()
+    user = get_user(update, context)
 
+    cur = conn.cursor()
     cur.execute(
         "SELECT j.*, a.* FROM applications a JOIN jobs j ON a.job_id = j.job_id WHERE a.user_id = %s ORDER BY a.created_at DESC LIMIT 50", (user[0],),
     )
@@ -508,7 +617,7 @@ async def my_applications(update: Update, context: ContextTypes.DEFAULT_TYPE):
     total_saved_jobs = len(application_list)
     # current_saved_job_index = 0  # Reset index when starting
     
-    application_details = f"\nJob Title: <b>\t{application[5]}</b> \n\nJob Type: <b>\t{application[4]}</b> \n\nWork Location: <b>\t{application[8]}, {application[9]}</b> \n\nSalary: <b>\t{application[10]}</b> \n\nDeadline: <b>\t{format_date(application[11])}</b> \n\n<b>Description</b>: \n{application[6]} \n\n<b>Requirements</b>: \n{application[7]} \n\n<b>__________________</b>\n\n<b>Applied at</b>: \t{format_date(application[24])} \n\n<b>Application Status</b>: \t{application[23].upper()} \n\n"
+    application_details = f"\nJob Title: <b>\t{application[5]}</b> \n\nJob Type: <b>\t{application[4]}</b> \n\nWork Location: <b>\t{application[8]}, {application[9]}</b> \n\nSalary: <b>\t{application[10]}</b> \n\nDeadline: <b>\t{format_date(application[11])}</b> \n\n<b>Description</b>: \n{application[6]} \n\n<b>Requirements</b>: \n{application[7]} \n\n<b>__________________</b>\n\n<b>Applied at</b>: \t{format_date(application[25])} \n\n<b>Application Status</b>: \t{application[24].upper()} \n\n"
 
     # keyboard = []
     # if current_saved_job_index > 0:
@@ -955,13 +1064,24 @@ async def redirect_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-# Helpers
+# ? HELPERS (will be extracted to a separate helpers.py file)
 def get_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    telegram_id = update.effective_user.id
+    if update.callback_query:
+        telegram_id = update.callback_query.from_user.id
+    else:
+        telegram_id = update.effective_user.id
+    
     cur = conn.cursor()
     cur.execute("SELECT * FROM users WHERE telegram_id = %s AND role_id = 1", (telegram_id,))
     user = cur.fetchone()
     return user
+
+
+def get_job(update: Update, context: ContextTypes.DEFAULT_TYPE, job_id):
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM jobs WHERE job_id = %s", (job_id,))
+    job = cur.fetchone()
+    return job
 
 
 def format_date(date):
@@ -1029,8 +1149,12 @@ apply_job_handler = ConversationHandler(
             CallbackQueryHandler(skip_cover_letter, pattern="skip_cover_letter")
         ],
         NEW_CV: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, new_cv),
+            MessageHandler(filters.Document.ALL & ~filters.COMMAND, new_cv),
             CallbackQueryHandler(skip_new_cv, pattern="skip_new_cv")
+        ],
+        PORTFOLIO: [
+            MessageHandler(filters.TEXT & ~filters.COMMAND, portfolio),
+            CallbackQueryHandler(skip_portfolio, pattern="skip_portfolio")
         ],
         CONFIRM_APPLY: [
             CallbackQueryHandler(confirm_apply, pattern="confirm_apply"),
