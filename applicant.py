@@ -165,6 +165,7 @@ async def show_job(update: Update, context: ContextTypes.DEFAULT_TYPE, job_id: s
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='HTML'
         )
+    return
 
 
 async def browse_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -247,6 +248,24 @@ async def next_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await browse_jobs(update, context)
 
 
+async def saved_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = get_user(update, context)
+
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT j.*, sj.* FROM saved_jobs sj JOIN jobs j ON sj.job_id = j.job_id WHERE sj.user_id = %s ORDER BY sj.created_at DESC LIMIT 50", (user[0],),
+    )
+    applications = cur.fetchall()
+    
+    if not applications:
+        if update.callback_query:
+            await update.callback_query.edit_message_text("You haven't saved any job.")
+        else:
+            await update.message.reply_text("You haven't saved any job.")
+        return
+    return
+
+
 async def next_saved_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global current_saved_job_index
     query = update.callback_query
@@ -257,7 +276,112 @@ async def next_saved_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == 'saved_job_previous':
         current_saved_job_index -= 1
 
-    await my_applications(update, context)
+    await saved_jobs(update, context)
+
+
+async def my_applications(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = get_user(update, context)
+
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT j.*, a.* FROM applications a JOIN jobs j ON a.job_id = j.job_id WHERE a.user_id = %s ORDER BY a.created_at DESC LIMIT 50", (user[0],),
+    )
+    applications = cur.fetchall()
+    
+    if not applications:
+        if update.callback_query:
+            await update.callback_query.edit_message_text("You haven't applied for any jobs yet.")
+        else:
+            await update.message.reply_text("You haven't applied for any jobs yet.")
+        return
+
+    application_list = [job for job in applications]
+    global current_saved_job_index
+    application = application_list[current_saved_job_index]
+    global total_saved_jobs
+    total_saved_jobs = len(application_list)
+    # current_saved_job_index = 0  # Reset index when starting
+    
+    application_details = f"\nJob Title: <b>\t{application[5]}</b> \n\nJob Type: <b>\t{application[4]}</b> \n\nWork Location: <b>\t{application[8]}, {application[9]}</b> \n\nSalary: <b>\t{application[10]}</b> \n\nDeadline: <b>\t{format_date(application[11])}</b> \n\n<b>Description</b>: \n{application[6]} \n\n<b>Requirements</b>: \n{application[7]} \n\n<b>__________________</b>\n\n<b>Applied at</b>: \t{format_date(application[25])} \n\n<b>Application Status</b>: \t{application[24].upper()} \n\n"
+
+    # keyboard = []
+    # if current_saved_job_index > 0:
+    #     keyboard.append([InlineKeyboardButton("Previous", callback_data='job_previous')])
+    # if current_saved_job_index < len(job_list) - 1:
+    #     keyboard.append([InlineKeyboardButton("Next", callback_data='job_next')])
+
+    if total_saved_jobs > 1:
+        if current_saved_job_index > 0:
+            keyboard = [
+                [
+                    InlineKeyboardButton("Previous", callback_data='saved_job_previous'),
+                    InlineKeyboardButton("Next", callback_data='saved_job_next'),
+                ],
+            ]
+            if total_saved_jobs == current_saved_job_index + 1:
+                keyboard = [
+                    [
+                        InlineKeyboardButton("Previous", callback_data='saved_job_previous'),
+                    ],
+                ]
+        else:
+            keyboard = [
+                [InlineKeyboardButton("Next", callback_data='saved_job_next')],
+            ]
+    else:
+        keyboard = []
+
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            text=application_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+    else:
+        await update.message.reply_text(
+            text=application_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+    return
+
+
+async def my_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = get_user(update, context)
+    
+    await update.message.reply_text(
+        text=f"<b>My Profile</b> \n\n"
+            f"<b>👤 \tName</b>: \t{(user[3].split()[0]).capitalize()} {(user[3].split()[1]).capitalize()} \n\n"
+            f"<b>\t&#64; \t\tUsername</b>: \t{user[4]} \n\n"
+            f"<b>👫 \tGender</b>: \t{user[5]} \n\n"
+            f"<b>🎂 \tAge</b>: \t{user[6]} \n\n"
+            f"<b>🌐 \tCountry</b>: \t{user[9]} \n\n"
+            f"<b>🏙️ \tCity</b>: \t{user[10]} \n\n"
+            f"<b>📧 \tEmail</b>: \t{user[7]} \n\n"
+            f"<b>📞 \tPhone</b>: \t{user[8]} \n\n",
+        parse_mode='HTML'
+    )
+    return
+
+
+# TODO: postponed
+async def job_notifications(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Job Notifications")
+    return
+
+
+async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        text=f"<b>Help</b>\n\n"
+            "<b>Browse Jobs</b> - find jobs that best fit your schedule \n\n"
+            "<b>Saved Jobs</b> - your saved jobs \n\n"
+            "<b>My Profile</b> - manage your profile \n\n"
+            "<b>My Applications</b> - view and track your applications \n\n"
+            # "<b>Job Notifications</b> - customize notifications you wanna receive \n\n"
+            "<b>Help</b> - show help message \n\n",
+        parse_mode="HTML",
+    )
+    return
 
 
 
@@ -555,129 +679,6 @@ async def cancel_apply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("Application canceled.")
     return ConversationHandler.END
-
-
-
-async def saved_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = get_user(update, context)
-
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT j.*, sj.* FROM saved_jobs sj JOIN jobs j ON sj.job_id = j.job_id WHERE sj.user_id = %s ORDER BY sj.created_at DESC LIMIT 50", (user[0],),
-    )
-    applications = cur.fetchall()
-    
-    if not applications:
-        if update.callback_query:
-            await update.callback_query.edit_message_text("You haven't saved any job.")
-        else:
-            await update.message.reply_text("You haven't saved any job.")
-        return
-    return
-
-
-async def my_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = get_user(update, context)
-    
-    await update.message.reply_text(
-        text=f"<b>My Profile</b> \n\n"
-            f"<b>👤 \tName</b>: \t{(user[3].split()[0]).capitalize()} {(user[3].split()[1]).capitalize()} \n\n"
-            f"<b>\t&#64; \t\tUsername</b>: \t{user[4]} \n\n"
-            f"<b>👫 \tGender</b>: \t{user[5]} \n\n"
-            f"<b>🎂 \tAge</b>: \t{user[6]} \n\n"
-            f"<b>🌐 \tCountry</b>: \t{user[9]} \n\n"
-            f"<b>🏙️ \tCity</b>: \t{user[10]} \n\n"
-            f"<b>📧 \tEmail</b>: \t{user[7]} \n\n"
-            f"<b>📞 \tPhone</b>: \t{user[8]} \n\n",
-        parse_mode='HTML'
-    )
-    return
-
-
-async def my_applications(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = get_user(update, context)
-
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT j.*, a.* FROM applications a JOIN jobs j ON a.job_id = j.job_id WHERE a.user_id = %s ORDER BY a.created_at DESC LIMIT 50", (user[0],),
-    )
-    applications = cur.fetchall()
-    
-    if not applications:
-        if update.callback_query:
-            await update.callback_query.edit_message_text("You haven't applied for any jobs yet.")
-        else:
-            await update.message.reply_text("You haven't applied for any jobs yet.")
-        return
-
-    application_list = [job for job in applications]
-    global current_saved_job_index
-    application = application_list[current_saved_job_index]
-    global total_saved_jobs
-    total_saved_jobs = len(application_list)
-    # current_saved_job_index = 0  # Reset index when starting
-    
-    application_details = f"\nJob Title: <b>\t{application[5]}</b> \n\nJob Type: <b>\t{application[4]}</b> \n\nWork Location: <b>\t{application[8]}, {application[9]}</b> \n\nSalary: <b>\t{application[10]}</b> \n\nDeadline: <b>\t{format_date(application[11])}</b> \n\n<b>Description</b>: \n{application[6]} \n\n<b>Requirements</b>: \n{application[7]} \n\n<b>__________________</b>\n\n<b>Applied at</b>: \t{format_date(application[25])} \n\n<b>Application Status</b>: \t{application[24].upper()} \n\n"
-
-    # keyboard = []
-    # if current_saved_job_index > 0:
-    #     keyboard.append([InlineKeyboardButton("Previous", callback_data='job_previous')])
-    # if current_saved_job_index < len(job_list) - 1:
-    #     keyboard.append([InlineKeyboardButton("Next", callback_data='job_next')])
-
-    if total_saved_jobs > 1:
-        if current_saved_job_index > 0:
-            keyboard = [
-                [
-                    InlineKeyboardButton("Previous", callback_data='saved_job_previous'),
-                    InlineKeyboardButton("Next", callback_data='saved_job_next'),
-                ],
-            ]
-            if total_saved_jobs == current_saved_job_index + 1:
-                keyboard = [
-                    [
-                        InlineKeyboardButton("Previous", callback_data='saved_job_previous'),
-                    ],
-                ]
-        else:
-            keyboard = [
-                [InlineKeyboardButton("Next", callback_data='saved_job_next')],
-            ]
-    else:
-        keyboard = []
-
-    if update.callback_query:
-        await update.callback_query.edit_message_text(
-            text=application_details,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
-    else:
-        await update.message.reply_text(
-            text=application_details,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
-    return
-
-
-# TODO: postponed
-async def job_notifications(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Job Notifications")
-
-
-async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        text=f"<b>Help</b>\n\n"
-            "<b>Browse Jobs</b> - find jobs that best fit your schedule \n\n"
-            "<b>Saved Jobs</b> - your saved jobs \n\n"
-            "<b>My Profile</b> - manage your profile \n\n"
-            "<b>My Applications</b> - view and track your applications \n\n"
-            # "<b>Job Notifications</b> - customize notifications you wanna receive \n\n"
-            "<b>Help</b> - show help message \n\n",
-        parse_mode="HTML",
-    )
-    return
 
 
 
@@ -1028,15 +1029,14 @@ async def confirm_registration(update: Update, context: ContextTypes.DEFAULT_TYP
         return ConversationHandler.END
 
 
-# Cancel command
 async def onboarding_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Registration canceled. Type /start to restart.")
     return ConversationHandler.END
 
 
-async def redirect_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await start(update, context)
-    return ConversationHandler.END
+# async def redirect_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     await start(update, context)
+#     return ConversationHandler.END
 
 
 # async def confirm_registration_old(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1110,7 +1110,7 @@ def get_all_cities():
     return InlineKeyboardMarkup(keyboard)
 
 
-def get_city_keyboard(page=0):
+# def get_city_keyboard(page=0):
     """Generate inline keyboard for cities with pagination."""
     start_index = page * PAGE_SIZE
     end_index = start_index + PAGE_SIZE
