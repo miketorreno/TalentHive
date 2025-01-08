@@ -57,8 +57,8 @@ PAGE_SIZE = 14  # 7 rows × 2 columns
 
 current_job_index = 0
 total_jobs = 0
-current_saved_job_index = 0
-total_saved_jobs = 0
+current_application_index = 0
+total_applications = 0
 
 
 # Start
@@ -266,19 +266,6 @@ async def saved_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return
 
 
-async def next_saved_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global current_saved_job_index
-    query = update.callback_query
-    await query.answer()  # Acknowledge the callback
-
-    if query.data == 'saved_job_next':
-        current_saved_job_index += 1
-    elif query.data == 'saved_job_previous':
-        current_saved_job_index -= 1
-
-    await saved_jobs(update, context)
-
-
 async def my_applications(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = get_user(update, context)
 
@@ -296,37 +283,37 @@ async def my_applications(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     application_list = [job for job in applications]
-    global current_saved_job_index
-    application = application_list[current_saved_job_index]
-    global total_saved_jobs
-    total_saved_jobs = len(application_list)
-    # current_saved_job_index = 0  # Reset index when starting
+    global current_application_index
+    application = application_list[current_application_index]
+    global total_applications
+    total_applications = len(application_list)
+    # current_application_index = 0  # Reset index when starting
     
     application_details = f"\nJob Title: <b>\t{application[5]}</b> \n\nJob Type: <b>\t{application[4]}</b> \n\nWork Location: <b>\t{application[8]}, {application[9]}</b> \n\nSalary: <b>\t{application[10]}</b> \n\nDeadline: <b>\t{format_date(application[11])}</b> \n\n<b>Description</b>: \n{application[6]} \n\n<b>Requirements</b>: \n{application[7]} \n\n<b>__________________</b>\n\n<b>Applied at</b>: \t{format_date(application[25])} \n\n<b>Application Status</b>: \t{application[24].upper()} \n\n"
 
     # keyboard = []
-    # if current_saved_job_index > 0:
+    # if current_application_index > 0:
     #     keyboard.append([InlineKeyboardButton("Previous", callback_data='job_previous')])
-    # if current_saved_job_index < len(job_list) - 1:
+    # if current_application_index < len(job_list) - 1:
     #     keyboard.append([InlineKeyboardButton("Next", callback_data='job_next')])
 
-    if total_saved_jobs > 1:
-        if current_saved_job_index > 0:
+    if total_applications > 1:
+        if current_application_index > 0:
             keyboard = [
                 [
-                    InlineKeyboardButton("Previous", callback_data='saved_job_previous'),
-                    InlineKeyboardButton("Next", callback_data='saved_job_next'),
+                    InlineKeyboardButton("Previous", callback_data='application_previous'),
+                    InlineKeyboardButton("Next", callback_data='application_next'),
                 ],
             ]
-            if total_saved_jobs == current_saved_job_index + 1:
+            if total_applications == current_application_index + 1:
                 keyboard = [
                     [
-                        InlineKeyboardButton("Previous", callback_data='saved_job_previous'),
+                        InlineKeyboardButton("Previous", callback_data='application_previous'),
                     ],
                 ]
         else:
             keyboard = [
-                [InlineKeyboardButton("Next", callback_data='saved_job_next')],
+                [InlineKeyboardButton("Next", callback_data='application_next')],
             ]
     else:
         keyboard = []
@@ -344,6 +331,19 @@ async def my_applications(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='HTML'
         )
     return
+
+
+async def next_application(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global current_application_index
+    query = update.callback_query
+    await query.answer()  # Acknowledge the callback
+
+    if query.data == 'application_next':
+        current_application_index += 1
+    elif query.data == 'application_previous':
+        current_application_index -= 1
+
+    await my_applications(update, context)
 
 
 async def my_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1190,7 +1190,7 @@ def main():
     
     # app.add_handler(CallbackQueryHandler(register_country, pattern="^citypage_.*"))
     app.add_handler(CallbackQueryHandler(next_job, pattern="^job_.*"))
-    app.add_handler(CallbackQueryHandler(next_saved_job, pattern="^saved_job_.*"))
+    app.add_handler(CallbackQueryHandler(next_application, pattern="^application_.*"))
 
     app.add_handler(apply_job_handler)
     app.add_handler(onboarding_handler)
