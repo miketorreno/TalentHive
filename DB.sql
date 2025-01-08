@@ -132,6 +132,14 @@ CREATE TABLE applications (
 
 
 
+CREATE TABLE saved_jobs (
+  saved_job_id SERIAL PRIMARY KEY,
+  job_id INT NOT NULL REFERENCES jobs(job_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  user_id INT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP,
+  deleted_at TIMESTAMP
+);
 
 
 
@@ -143,14 +151,7 @@ CREATE TABLE applications (
 
 
 -- Not so urgent
-  CREATE TABLE saved_jobs (
-    save_id SERIAL PRIMARY KEY,
-    job_id INT NOT NULL REFERENCES jobs(job_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    user_id INT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP,
-    deleted_at TIMESTAMP
-  );
+
 
 
 -- Generated 
