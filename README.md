@@ -30,6 +30,7 @@ Telegram bot that allows recruiters to post jobs and job seekers to browse & app
 
 ## Fixes
 
+- [ ] Change age to dob in the db (by subtracting it when saving & fetching it)
 - [ ] When user uploads new cv while it only checks for docs & text ... it won't respond to other file types. Just add a check for the rest types & change the filter on `MessageHandler(filters.Document.ALL & ~filters.COMMAND, new_cv),`
 - [X] use `get_user(update, context)` helper function whenever you need to get the user object
   - [x] on applicant bot
@@ -52,7 +53,7 @@ Telegram bot that allows recruiters to post jobs and job seekers to browse & app
 - [ ] Fix performance issues
 - [ ] Fix security vulnerabilities
 - [ ] Add "You sure?" kinda prompt before canceling job posting, onboarding, applying, etc.
-
+- [ ] Remove all comments after testing everything (manually & automated)
 
 
 ## Ideas, for the round table
