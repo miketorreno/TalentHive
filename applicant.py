@@ -14,7 +14,7 @@ from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, Conversa
 logging.basicConfig(
   format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO  # level=logging.INFO | logging.DEBUG
 )
-logging.getLogger("httpx").setLevel(logging.WARNING)  # avoid all GET and POST requests being logged
+logging.getLogger("httpx").setLevel(logging.WARNING)  # avoid all GET and POST requests from being logged
 logger = logging.getLogger(__name__)
 
 
@@ -869,7 +869,11 @@ async def new_cv(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Validate the file type
         file_name = update.message.document.file_name
         if not file_name.endswith(('.pdf', '.doc', '.docx')):
-            await update.message.reply_text("Invalid file type. Please upload a PDF or Word document.")
+            keyboard = [[InlineKeyboardButton("Skip", callback_data='skip_new_cv')]]
+            await update.message.reply_text(
+                "Invalid file type. Please upload a PDF or Word document.",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+            )
             return NEW_CV
 
         # Save the file ID
@@ -900,6 +904,16 @@ async def new_cv(update: Update, context: ContextTypes.DEFAULT_TYPE):
     #     parse_mode='HTML'
     # )
     # return CONFIRM_APPLY
+
+
+async def unsupported_cv(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle unsupported file uploads."""
+    keyboard = [[InlineKeyboardButton("Skip", callback_data='skip_new_cv')]]
+    await update.message.reply_text(
+        "Invalid file type. Please upload a PDF or Word document.",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+    return NEW_CV
 
 
 async def skip_new_cv(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -946,12 +960,10 @@ async def portfolio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"{job_details}"
         f"<b>__________________</b>\n\n"
-        f"<b>Cover Letter</b> \n{context.user_data['cover_letter']}\n\n"
-        f"{'<b>CV Uploaded</b> \n✅ \n\n' if context.user_data['new_cv'] else ''}"
-        # f"<b>CV</b> \n✅\n\n"
+        f"<b>Cover Letter</b> \n{context.user_data['cover_letter'] if context.user_data['cover_letter'] else None}\n\n"
+        f"<b>CV Uploaded</b> \n{'✅' if context.user_data['new_cv'] else None}\n\n"
+        f"<b>Portfolio(s)</b> \n{context.user_data['portfolio'] if context.user_data['portfolio'] else None}\n\n\n"
         # f"<b>CV</b> \n{file.file_path}\n\n"
-        # f"<b>CV</b> \n{context.user_data['new_cv']}\n\n"
-        f"<b>Portfolio(s)</b> \n{context.user_data['portfolio']}\n\n\n"
         f"<b>Apply for the job?</b>",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode='HTML'
@@ -996,11 +1008,10 @@ async def skip_portfolio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text(
         f"{job_details}"
         f"<b>__________________</b>\n\n"
-        f"<b>Cover Letter</b> \n{context.user_data['cover_letter']}\n\n"
-        f"{'<b>CV Uploaded</b> \n✅ \n\n' if context.user_data['new_cv'] else ''}"
+        f"<b>Cover Letter</b> \n{context.user_data['cover_letter'] if context.user_data['cover_letter'] else None}\n\n"
+        f"<b>CV Uploaded</b> \n{'✅' if context.user_data['new_cv'] else None}\n\n"
+        f"<b>Portfolio(s)</b> \n{context.user_data['portfolio'] if context.user_data['portfolio'] else None}\n\n\n"
         # f"<b>CV</b> \n{file.file_path}\n\n"
-        # f"<b>CV</b> \n{context.user_data['new_cv']}\n\n"
-        f"<b>Portfolio(s)</b> \n{context.user_data['portfolio']}\n\n\n"
         f"<b>Apply for the job?</b>",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode='HTML'
@@ -1430,11 +1441,6 @@ async def onboarding_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
-# async def redirect_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-#     await start(update, context)
-#     return ConversationHandler.END
-
-
 # async def confirm_registration_old(update: Update, context: ContextTypes.DEFAULT_TYPE):
 #     query = update.callback_query
 #     await query.answer()
@@ -1549,7 +1555,8 @@ apply_job_handler = ConversationHandler(
         ],
         NEW_CV: [
             MessageHandler(filters.Document.ALL & ~filters.COMMAND, new_cv),
-            CallbackQueryHandler(skip_new_cv, pattern="skip_new_cv")
+            MessageHandler(filters.ALL & ~filters.Document.ALL, unsupported_cv),
+            CallbackQueryHandler(skip_new_cv, pattern="skip_new_cv"),
         ],
         PORTFOLIO: [
             MessageHandler(filters.TEXT & ~filters.COMMAND, portfolio),
@@ -1627,10 +1634,10 @@ def main():
     app.add_handler(CommandHandler('start', start))
     app.add_handler(CommandHandler('help', help))
     app.add_handler(CommandHandler('cancel', cancel))
-    app.add_handler(CommandHandler('browsejobs', browse_jobs))
-    app.add_handler(CommandHandler('savedjobs', saved_jobs))
-    app.add_handler(CommandHandler('myprofile', my_profile))
-    app.add_handler(CommandHandler('myapplications', my_applications))
+    app.add_handler(CommandHandler('browse_jobs', browse_jobs))
+    app.add_handler(CommandHandler('saved_jobs', saved_jobs))
+    app.add_handler(CommandHandler('my_profile', my_profile))
+    app.add_handler(CommandHandler('my_applications', my_applications))
     
     print("Bot is running...")
     app.run_polling(timeout=60)

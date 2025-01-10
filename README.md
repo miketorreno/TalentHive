@@ -53,7 +53,7 @@ Telegram bot that allows recruiters to post jobs and job seekers to browse & app
 - [ ] Fix performance issues
 - [ ] Fix security vulnerabilities
 - [ ] Add "You sure?" kinda prompt before canceling job posting, onboarding, applying, etc.
-
+- [ ] Remove all comments after testing everything (manually & automated)
 
 
 ## Ideas, for the round table
