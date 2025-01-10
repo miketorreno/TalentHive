@@ -37,7 +37,7 @@ signal.signal(signal.SIGINT, shutdown_handler)
 
 
 # Define states
-REGISTER, REGISTER_NAME, REGISTER_FIRSTNAME, REGISTER_LASTNAME, REGISTER_EMAIL, REGISTER_PHONE, REGISTER_GENDER, REGISTER_DOB, REGISTER_COUNTRY, REGISTER_CITY, CONFIRMATION, CHOOSE_ACTION, COVER_LETTER, NEW_CV, PORTFOLIO, CONFIRM_APPLY = range(16)
+REGISTER, REGISTER_NAME, REGISTER_FIRSTNAME, REGISTER_LASTNAME, REGISTER_EMAIL, REGISTER_PHONE, REGISTER_GENDER, REGISTER_DOB, REGISTER_COUNTRY, REGISTER_CITY, CONFIRMATION, CHOOSE_ACTION, COVER_LETTER, NEW_CV, PORTFOLIO, CONFIRM_APPLY, CHOOSE_FIELD, EDIT_NAME, EDIT_USERNAME, EDIT_DONE = range(20)
 
 # List of cities sorted alphabetically
 CITIES = sorted([
@@ -104,9 +104,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "Hope we can talk again soon."
-    )
+    await update.message.reply_text("Hope we can talk again soon.")
     return ConversationHandler.END
 
 
@@ -349,19 +347,184 @@ async def next_application(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def my_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = get_user(update, context)
     
+    keyboard = [[InlineKeyboardButton("Edit Profile", callback_data="edit_profile")]]
+    
+    if update.callback_query:
+        query = update.callback_query
+        await query.edit_message_text(
+            text=f"<b>My Profile</b> \n\n"
+                f"<b>👤 \tName</b>: \t{(user[3].split()[0]).capitalize()} {(user[3].split()[1]).capitalize() if len(user[3].split()) > 1 else ''} \n\n"
+                f"<b>\t&#64; \t\tUsername</b>: \t{user[4]} \n\n"
+                f"<b>👫 \tGender</b>: \t{user[5]} \n\n"
+                f"<b>🎂 \tAge</b>: \t{user[6]} \n\n"
+                f"<b>🌐 \tCountry</b>: \t{user[9]} \n\n"
+                f"<b>🏙️ \tCity</b>: \t{user[10]} \n\n"
+                f"<b>📧 \tEmail</b>: \t{user[7]} \n\n" 
+                f"<b>📞 \tPhone</b>: \t{user[8]} \n\n",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+    else:
+        await update.message.reply_text(
+            text=f"<b>My Profile</b> \n\n"
+                f"<b>👤 \tName</b>: \t{(user[3].split()[0]).capitalize()} {(user[3].split()[1]).capitalize() if len(user[3].split()) > 1 else ''} \n\n"
+                f"<b>\t&#64; \t\tUsername</b>: \t{user[4]} \n\n"
+                f"<b>👫 \tGender</b>: \t{user[5]} \n\n"
+                f"<b>🎂 \tAge</b>: \t{user[6]} \n\n"
+                f"<b>🌐 \tCountry</b>: \t{user[9]} \n\n"
+                f"<b>🏙️ \tCity</b>: \t{user[10]} \n\n"
+                f"<b>📧 \tEmail</b>: \t{user[7]} \n\n" 
+                f"<b>📞 \tPhone</b>: \t{user[8]} \n\n",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+    return
+
+
+async def edit_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    keyboard = [
+        [
+            InlineKeyboardButton("Edit Name", callback_data="edit_name"),
+            InlineKeyboardButton("Update Username", callback_data="edit_username")
+        ],
+        [
+            InlineKeyboardButton("Edit Gender", callback_data="edit_gender"),
+            InlineKeyboardButton("Edit Age", callback_data="edit_age")
+        ],
+        [
+            InlineKeyboardButton("Edit Country", callback_data="edit_country"),
+            InlineKeyboardButton("Edit City", callback_data="edit_city")
+        ],
+        [
+            InlineKeyboardButton("Edit Email", callback_data="edit_email"),
+            InlineKeyboardButton("Edit Phone", callback_data="edit_phone")
+        ],
+        [InlineKeyboardButton("Done", callback_data="done_profile")],
+    ]
+    
+    await query.edit_message_reply_markup(
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+    return 
+
+
+async def choose_field(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    choice = query.data
+    
+    if choice == 'edit_name':
+        await context.bot.send_message(
+            chat_id=query.from_user.id,
+            text="Please enter your new name (First and Last) \n\n<i>* Type /cancel to abort editing</i>",
+            parse_mode="HTML",
+        )
+        return EDIT_NAME
+    elif choice == 'edit_username':
+        await context.bot.send_message(
+            chat_id=query.from_user.id,
+            text="<i>updating...</i>",
+            parse_mode="HTML",
+        )
+        return EDIT_USERNAME
+        # return ConversationHandler.END
+    else:
+        await context.bot.send_message(
+            chat_id=query.from_user.id,
+            text="Invalid choice, please select again",
+            parse_mode="HTML",
+        )
+        return CHOOSE_FIELD
+
+
+async def edit_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    name = update.message.text.strip()
+    telegram_id = update.effective_user.id
+    
+    cur = conn.cursor()
+    cur.execute(f"UPDATE users SET name = %s WHERE telegram_id = %s AND role_id = 1", (name, telegram_id))
+    conn.commit()
+    
+    keyboard = [
+        [InlineKeyboardButton("Back to Profile", callback_data='my_profile')]
+    ]
+
     await update.message.reply_text(
-        text=f"<b>My Profile</b> \n\n"
-            f"<b>👤 \tName</b>: \t{(user[3].split()[0]).capitalize()} {(user[3].split()[1]).capitalize()} \n\n"
-            f"<b>\t&#64; \t\tUsername</b>: \t{user[4]} \n\n"
-            f"<b>👫 \tGender</b>: \t{user[5]} \n\n"
-            f"<b>🎂 \tAge</b>: \t{user[6]} \n\n"
-            f"<b>🌐 \tCountry</b>: \t{user[9]} \n\n"
-            f"<b>🏙️ \tCity</b>: \t{user[10]} \n\n"
-            f"<b>📧 \tEmail</b>: \t{user[7]} \n\n"
-            f"<b>📞 \tPhone</b>: \t{user[8]} \n\n",
+        text="Name updated successfully!",
+        reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode='HTML'
     )
-    return
+    return ConversationHandler.END
+
+
+async def edit_username(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    username = update.effective_user.username
+    telegram_id = update.effective_user.id
+    
+    print("\n UPDATEDing username \n")
+    
+    cur = conn.cursor()
+    cur.execute(f"UPDATE users SET username = %s WHERE telegram_id = %s AND role_id = 1", ('username', telegram_id))
+    conn.commit()
+    
+    # keyboard = [
+    #     [InlineKeyboardButton("Back to Profile", callback_data='my_profile')]
+    # ]
+    
+    # query = update.callback_query
+    # await query.answer()
+    
+    # await context.bot.send_message(
+    #     chat_id=query.from_user.id,
+    #     text="Username updated successfully!",
+    #     reply_markup=InlineKeyboardMarkup(keyboard),
+    #     parse_mode="HTML",
+    # )
+    return ConversationHandler.END
+
+
+# async def save_profile(update: Update, context: ContextTypes.DEFAULT_TYPE, field):
+#     data = update.message.text.strip()
+#     if update.callback_query:
+#         telegram_id = update.callback_query.from_user.id
+#         print("\n from update.callback_query.from_user.id \n")
+#     else:
+#         telegram_id = update.effective_user.id
+#         print("\n from update.effective_user.id \n")
+    
+#     cur = conn.cursor()
+#     cur.execute(f"UPDATE users SET {field} = %s WHERE telegram_id = %s AND role_id = 1", (data, telegram_id))
+#     conn.commit()
+
+#     await update.message.reply_text(
+#         text="Success!",
+#         parse_mode='HTML'
+#     )
+
+
+async def done_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    keyboard = [[InlineKeyboardButton("Edit Profile", callback_data="edit_profile")]]
+    
+    await query.edit_message_reply_markup(
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+    return 
+
+
+async def cancel_edit_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [[InlineKeyboardButton("Back to Profile", callback_data='my_profile')]]
+    
+    await update.message.reply_text(
+        "Profile update canceled.",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+    return ConversationHandler.END
 
 
 # TODO: postponed
@@ -1165,6 +1328,26 @@ apply_job_handler = ConversationHandler(
 )
 
 
+profile_handler = ConversationHandler(
+    entry_points=[CallbackQueryHandler(choose_field, pattern="^edit_.*")],
+    states={
+        CHOOSE_FIELD: [CallbackQueryHandler(choose_field, pattern="^edit_.*")],
+        EDIT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_name)],
+        EDIT_USERNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_username)],
+        
+        # EDIT_DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_description)],
+        # EDIT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_profile)],
+        # EDIT_GENDER: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_profile)],
+        # EDIT_AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_profile)],
+        # EDIT_COUNTRY: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_profile)],
+        # EDIT_CITY: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_profile)],
+        # EDIT_EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_profile)],
+        # EDIT_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_profile)],
+    },
+    fallbacks=[CommandHandler("cancel", cancel_edit_profile)],
+)
+
+
 onboarding_handler = ConversationHandler(
     entry_points=[CallbackQueryHandler(onboarding_start, 'register')],
     states={
@@ -1189,10 +1372,18 @@ def main():
     app = ApplicationBuilder().token(os.getenv('APPLICANT_BOT_TOKEN')).build()
     
     # app.add_handler(CallbackQueryHandler(register_country, pattern="^citypage_.*"))
+    
     app.add_handler(CallbackQueryHandler(next_job, pattern="^job_.*"))
     app.add_handler(CallbackQueryHandler(next_application, pattern="^application_.*"))
+    
+    app.add_handler(CallbackQueryHandler(my_profile, pattern="^my_profile$"))
+    app.add_handler(CallbackQueryHandler(edit_profile, pattern="^edit_profile$"))
+    app.add_handler(CallbackQueryHandler(done_profile, pattern="^done_profile$"))
+    
+    # app.add_handler(CallbackQueryHandler(edit_name, pattern="^edit_name$"))
 
     app.add_handler(apply_job_handler)
+    app.add_handler(profile_handler)
     app.add_handler(onboarding_handler)
 
     # main menu handler (general)
@@ -1200,6 +1391,10 @@ def main():
 
     app.add_handler(CommandHandler('start', start))
     app.add_handler(CommandHandler('cancel', cancel))
+    app.add_handler(CommandHandler('browsejobs', browse_jobs))
+    app.add_handler(CommandHandler('savedjobs', saved_jobs))
+    app.add_handler(CommandHandler('myprofile', my_profile))
+    app.add_handler(CommandHandler('myapplications', my_applications))
     
     print("Bot is running...")
     app.run_polling(timeout=60)
