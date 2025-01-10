@@ -37,7 +37,7 @@ signal.signal(signal.SIGINT, shutdown_handler)
 
 
 # Define states
-REGISTER, REGISTER_NAME, REGISTER_FIRSTNAME, REGISTER_LASTNAME, REGISTER_EMAIL, REGISTER_PHONE, REGISTER_GENDER, REGISTER_DOB, REGISTER_COUNTRY, REGISTER_CITY, CONFIRMATION, CHOOSE_ACTION, COVER_LETTER, NEW_CV, PORTFOLIO, CONFIRM_APPLY, CHOOSE_FIELD, EDIT_NAME, EDIT_USERNAME, EDIT_DONE = range(20)
+REGISTER, REGISTER_NAME, REGISTER_FIRSTNAME, REGISTER_LASTNAME, REGISTER_EMAIL, REGISTER_PHONE, REGISTER_GENDER, REGISTER_DOB, REGISTER_COUNTRY, REGISTER_CITY, CONFIRMATION, CHOOSE_ACTION, COVER_LETTER, NEW_CV, PORTFOLIO, CONFIRM_APPLY, CHOOSE_FIELD, EDIT_NAME, EDIT_USERNAME, EDIT_GENDER, EDIT_DOB, EDIT_COUNTRY, EDIT_CITY, EDIT_EMAIL, EDIT_PHONE, EDIT_DONE = range(26)
 
 # List of cities sorted alphabetically
 CITIES = sorted([
@@ -388,11 +388,11 @@ async def edit_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [
             InlineKeyboardButton("Edit Name", callback_data="edit_name"),
-            InlineKeyboardButton("Update Username", callback_data="edit_username")
+            InlineKeyboardButton("Update Username", callback_data="update_username")
         ],
         [
             InlineKeyboardButton("Edit Gender", callback_data="edit_gender"),
-            InlineKeyboardButton("Edit Age", callback_data="edit_age")
+            InlineKeyboardButton("Edit Age", callback_data="edit_dob")
         ],
         [
             InlineKeyboardButton("Edit Country", callback_data="edit_country"),
@@ -423,14 +423,72 @@ async def choose_field(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="HTML",
         )
         return EDIT_NAME
-    elif choice == 'edit_username':
+    # elif choice == 'edit_username':
+        # await context.bot.send_message(
+        #     chat_id=query.from_user.id,
+        #     text="<i>* Updating your username...</i>",
+        #     parse_mode="HTML",
+        # )
+        # return EDIT_USERNAME
+        return edit_username(update, context)
+    elif choice == 'edit_gender':
+        keyboard = [
+            [
+                InlineKeyboardButton("Male", callback_data='Male'), 
+                InlineKeyboardButton("Female", callback_data='Female')
+            ],
+        ]
+        
         await context.bot.send_message(
             chat_id=query.from_user.id,
-            text="<i>updating...</i>",
+            text="Please choose your gender \n\n<i>* Type /cancel to abort editing</i>",
+            reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode="HTML",
         )
-        return EDIT_USERNAME
-        # return ConversationHandler.END
+        return EDIT_GENDER
+    elif choice == 'edit_dob':
+        await context.bot.send_message(
+            chat_id=query.from_user.id,
+            text="Please enter your age between 10 and 100 \n\n<i>* Type /cancel to abort editing</i>",
+            parse_mode="HTML",
+        )
+        return EDIT_DOB
+    elif choice == 'edit_country':
+        keyboard = [
+            [InlineKeyboardButton("Ethiopia", callback_data='Ethiopia')],
+        ]
+        
+        await context.bot.send_message(
+            chat_id=query.from_user.id,
+            text="Please select your country \n\n<i>* Type /cancel to abort editing</i>",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+        return EDIT_COUNTRY
+    elif choice == 'edit_city':
+        keyboard = get_all_cities()
+        
+        await context.bot.send_message(
+            chat_id=query.from_user.id,
+            text="Please select your city \n\n<i>* Type /cancel to abort editing</i>",
+            reply_markup=keyboard,
+            parse_mode="HTML",
+        )
+        return EDIT_CITY
+    elif choice == 'edit_email':
+        await context.bot.send_message(
+            chat_id=query.from_user.id,
+            text="Please enter your email address \n\n<i>* Type /cancel to abort editing</i>",
+            parse_mode="HTML",
+        )
+        return EDIT_EMAIL
+    elif choice == 'edit_phone':
+        await context.bot.send_message(
+            chat_id=query.from_user.id,
+            text="Please enter your phone number \n\n<i>* Type /cancel to abort editing</i>",
+            parse_mode="HTML",
+        )
+        return EDIT_PHONE
     else:
         await context.bot.send_message(
             chat_id=query.from_user.id,
@@ -460,49 +518,211 @@ async def edit_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
-async def edit_username(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    username = update.effective_user.username
+async def update_username(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
-    
-    print("\n UPDATEDing username \n")
+    username = update.effective_user.username
+    query = update.callback_query
+    await query.answer()
     
     cur = conn.cursor()
-    cur.execute(f"UPDATE users SET username = %s WHERE telegram_id = %s AND role_id = 1", ('username', telegram_id))
+    cur.execute(f"UPDATE users SET username = %s WHERE telegram_id = %s AND role_id = 1", (username, telegram_id))
     conn.commit()
     
-    # keyboard = [
-    #     [InlineKeyboardButton("Back to Profile", callback_data='my_profile')]
-    # ]
-    
-    # query = update.callback_query
-    # await query.answer()
-    
-    # await context.bot.send_message(
-    #     chat_id=query.from_user.id,
-    #     text="Username updated successfully!",
-    #     reply_markup=InlineKeyboardMarkup(keyboard),
-    #     parse_mode="HTML",
-    # )
+    keyboard = [
+        [InlineKeyboardButton("Back to Profile", callback_data='my_profile')]
+    ]
+
+    await context.bot.send_message(
+        chat_id=query.from_user.id,
+        text="Username updated successfully!",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='HTML'
+    )
     return ConversationHandler.END
 
 
-# async def save_profile(update: Update, context: ContextTypes.DEFAULT_TYPE, field):
-#     data = update.message.text.strip()
-#     if update.callback_query:
-#         telegram_id = update.callback_query.from_user.id
-#         print("\n from update.callback_query.from_user.id \n")
-#     else:
-#         telegram_id = update.effective_user.id
-#         print("\n from update.effective_user.id \n")
+async def edit_gender(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        query = update.callback_query
+        await query.answer()
+        telegram_id = update.effective_user.id
+        
+        cur = conn.cursor()
+        cur.execute(f"UPDATE users SET gender = %s WHERE telegram_id = %s AND role_id = 1", (query.data, telegram_id))
+        conn.commit()
     
-#     cur = conn.cursor()
-#     cur.execute(f"UPDATE users SET {field} = %s WHERE telegram_id = %s AND role_id = 1", (data, telegram_id))
-#     conn.commit()
+        keyboard = [
+            [InlineKeyboardButton("Back to Profile", callback_data='my_profile')]
+        ]
 
-#     await update.message.reply_text(
-#         text="Success!",
-#         parse_mode='HTML'
-#     )
+        await query.edit_message_text(
+            text="Gender updated successfully!",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+        return ConversationHandler.END
+    except Exception as e:
+        await query.edit_message_text("An error occurred while updating your gender. Please try again.")
+        print(f"Error in edit_gender: {e}")
+        return ConversationHandler.END
+
+
+async def edit_dob(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        dob = update.message.text.strip()
+        
+        if dob.isdigit():
+            # Check if the input is a number between 10 and 100
+            age = int(dob)
+            if 10 <= age <= 100:
+                keyboard = [
+                    [InlineKeyboardButton("Back to Profile", callback_data='my_profile')]
+                ]
+                
+                telegram_id = update.effective_user.id
+    
+                cur = conn.cursor()
+                cur.execute(f"UPDATE users SET dob = %s WHERE telegram_id = %s AND role_id = 1", (dob, telegram_id))
+                conn.commit()
+                
+                await update.message.reply_text(
+                    text="Age updated successfully!",
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML'
+                )
+                return ConversationHandler.END
+            else:
+                await update.message.reply_text(
+                    "<i>* Age out of range</i>\n\nPlease enter your age between 10 and 100 \n\n<i>* Type /cancel to abort editing</i>",
+                    parse_mode='HTML'
+                )
+                return EDIT_DOB
+        else:
+            await update.message.reply_text(
+                "<i>* Invalid age.</i>\n\nPlease enter your age between 10 and 100 \n\n<i>* Type /cancel to abort editing</i>",
+                parse_mode='HTML'
+            )
+            return EDIT_DOB
+    except Exception as e:
+        await update.message.reply_text("An error occurred while updating your age. Please try again.")
+        print(f"Error in edit_dob: {e}")
+        return ConversationHandler.END
+
+
+async def edit_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        query = update.callback_query
+        await query.answer()
+        telegram_id = update.effective_user.id
+        
+        cur = conn.cursor()
+        cur.execute(f"UPDATE users SET country = %s WHERE telegram_id = %s AND role_id = 1", (query.data, telegram_id))
+        conn.commit()
+        
+        keyboard = [
+            [InlineKeyboardButton("Back to Profile", callback_data='my_profile')]
+        ]
+        
+        await query.edit_message_text(
+            text="Country updated successfully!",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+        return ConversationHandler.END
+    except Exception as e:
+        await query.edit_message_text("An error occurred while updating your country. Please try again.")
+        print(f"Error in edit_country: {e}")
+        return ConversationHandler.END
+
+
+async def edit_city(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        query = update.callback_query
+        await query.answer()
+        telegram_id = update.effective_user.id
+        
+        cur = conn.cursor()
+        cur.execute(f"UPDATE users SET city = %s WHERE telegram_id = %s AND role_id = 1", (query.data, telegram_id))
+        conn.commit()
+        
+        keyboard = [
+            [InlineKeyboardButton("Back to Profile", callback_data='my_profile')]
+        ]
+        
+        await query.edit_message_text(
+            text="City updated successfully!",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+        return ConversationHandler.END
+    except Exception as e:
+        await update.effective_message.reply_text("An error occurred while saving your city. Please try again.")
+        print(f"Error in edit_city: {e}")
+        return ConversationHandler.END
+
+
+async def edit_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        email = update.message.text.strip()
+        telegram_id = update.effective_user.id
+
+        if not is_valid_email(email):
+            await update.message.reply_text(
+                "<i>* Invalid email format.</i>\n\nPlease enter your email address \n\n<i>* Type /cancel to abort editing</i>",
+                parse_mode='HTML'
+            )
+            return EDIT_EMAIL
+
+        cur = conn.cursor()
+        cur.execute(f"UPDATE users SET email = %s WHERE telegram_id = %s AND role_id = 1", (email, telegram_id))
+        conn.commit()
+        
+        keyboard = [
+            [InlineKeyboardButton("Back to Profile", callback_data='my_profile')]
+        ]
+        
+        await update.message.reply_text(
+            text="Email updated successfully!",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+        return ConversationHandler.END
+    except Exception as e:
+        await update.message.reply_text("An error occurred while updating your email address. Please try again.")
+        print(f"Error in edit_email: {e}")
+        return ConversationHandler.END
+
+
+async def edit_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        phone = update.message.text.strip()
+        telegram_id = update.effective_user.id
+        
+        if not phone.isdigit() or len(phone) < 9:  # Basic validation for phone numbers
+            await update.message.reply_text(
+                "<i>* Invalid phone number.</i>\n\nPlease enter your phone number \n\n<i>* Type /cancel to abort editing</i>",
+                parse_mode='HTML'
+            )
+            return EDIT_PHONE
+
+        cur = conn.cursor()
+        cur.execute(f"UPDATE users SET phone = %s WHERE telegram_id = %s AND role_id = 1", (phone, telegram_id))
+        conn.commit()
+        
+        keyboard = [
+            [InlineKeyboardButton("Back to Profile", callback_data='my_profile')]
+        ]
+        
+        await update.message.reply_text(
+            text="Email updated successfully!",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+        return ConversationHandler.END
+    except Exception as e:
+        await update.message.reply_text("An error occurred while updating your phone number. Please try again.")
+        print(f"Error in edit_phone: {e}")
+        return ConversationHandler.END
 
 
 async def done_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -554,6 +774,19 @@ async def apply_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     context.user_data['job_id'] = int(query.data.split("_")[-1])
     keyboard = [[InlineKeyboardButton("Skip", callback_data='skip_cover_letter')]]
+    user = get_user(update, context)
+    
+    # checking duplicate
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM applications WHERE job_id = %s AND user_id = %s", (context.user_data['job_id'], user[0]))
+    duplicate = cur.fetchone()
+    if duplicate:
+        await context.bot.send_message(
+            chat_id=query.from_user.id,
+            text="You've already applied for this job.",
+            parse_mode="HTML",
+        )
+        return ConversationHandler.END
     
     await query.edit_message_text(
         "Please write cover letter or click skip \n\n<i>*enter less than 500 characters</i>",
@@ -796,17 +1029,16 @@ async def skip_portfolio(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def confirm_apply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    cur = conn.cursor()
-    
     user = get_user(update, context)
     
     # checking duplicate
-    cur.execute("SELECT * FROM applications WHERE job_id = %s AND user_id = %s", (context.user_data['job_id'], user[0]))
-    duplicate = cur.fetchone()
-    if duplicate:
-        await query.edit_message_text("You've already applied for this job.")
-        return ConversationHandler.END
+    # cur.execute("SELECT * FROM applications WHERE job_id = %s AND user_id = %s", (context.user_data['job_id'], user[0]))
+    # duplicate = cur.fetchone()
+    # if duplicate:
+    #     await query.edit_message_text("You've already applied for this job.")
+    #     return ConversationHandler.END
     
+    cur = conn.cursor()
     cur.execute(
         "INSERT INTO applications (job_id, user_id, cover_letter, cv, portfolio) VALUES (%s, %s, %s, %s, %s)",
         (context.user_data['job_id'], user[0], context.user_data['cover_letter'], context.user_data['new_cv'], json.dumps(context.user_data.get('portfolio', []))),
@@ -841,6 +1073,7 @@ async def cancel_apply(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("Application canceled.")
     else:
         await update.message.reply_text("Application canceled.")
+
     return ConversationHandler.END
 
 
@@ -979,7 +1212,7 @@ async def register_gender(update: Update, context: ContextTypes.DEFAULT_TYPE):
 #         else:
 #             context.user_data['age'] = None
 #             context.user_data['dob'] = dob_age
-#         await update.message.reply_text("Please choose your country")
+#         await update.message.reply_text("Please select your country")
 #         return REGISTER_COUNTRY
 #     except Exception as e:
 #         await update.message.reply_text("An error occurred while saving your date of birth or age. Please try again.")
@@ -1013,7 +1246,7 @@ async def register_dob(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("Ethiopia", callback_data='Ethiopia')],
         ]
         await update.message.reply_text(
-            "Please choose your country",
+            "Please select your country",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
         return REGISTER_COUNTRY
@@ -1062,7 +1295,7 @@ async def register_dob(update: Update, context: ContextTypes.DEFAULT_TYPE):
 #             [InlineKeyboardButton("Ethiopia", callback_data='Ethiopia')],
 #         ]
 #         await update.message.reply_text(
-#             "Please choose your country",
+#             "Please select your country",
 #             reply_markup=InlineKeyboardMarkup(keyboard)
 #         )
 #         return REGISTER_COUNTRY
@@ -1085,7 +1318,7 @@ async def register_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = get_all_cities()
         context.user_data['country'] = country
         await query.edit_message_text(
-            "Please enter your city",
+            "Please select your city",
             reply_markup=keyboard
         )
         return REGISTER_CITY
@@ -1305,7 +1538,10 @@ def get_all_cities():
 
 # Conversation handlers
 apply_job_handler = ConversationHandler(
-    entry_points=[CallbackQueryHandler(apply_start, "apply"), CommandHandler("apply", apply_start)],
+    entry_points=[
+        CallbackQueryHandler(apply_start, "apply"), 
+        CommandHandler("apply", apply_start)
+    ],
     states={
         COVER_LETTER: [
             MessageHandler(filters.TEXT & ~filters.COMMAND, cover_letter),
@@ -1333,16 +1569,13 @@ profile_handler = ConversationHandler(
     states={
         CHOOSE_FIELD: [CallbackQueryHandler(choose_field, pattern="^edit_.*")],
         EDIT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_name)],
-        EDIT_USERNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_username)],
-        
-        # EDIT_DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_description)],
-        # EDIT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_profile)],
-        # EDIT_GENDER: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_profile)],
-        # EDIT_AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_profile)],
-        # EDIT_COUNTRY: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_profile)],
-        # EDIT_CITY: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_profile)],
-        # EDIT_EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_profile)],
-        # EDIT_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_profile)],
+        # EDIT_USERNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_username)],
+        EDIT_GENDER: [CallbackQueryHandler(edit_gender)],
+        EDIT_DOB: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_dob)],
+        EDIT_COUNTRY: [CallbackQueryHandler(edit_country)],
+        EDIT_CITY: [CallbackQueryHandler(edit_city)],
+        EDIT_EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_email)],
+        EDIT_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_phone)],
     },
     fallbacks=[CommandHandler("cancel", cancel_edit_profile)],
 )
@@ -1379,6 +1612,7 @@ def main():
     app.add_handler(CallbackQueryHandler(my_profile, pattern="^my_profile$"))
     app.add_handler(CallbackQueryHandler(edit_profile, pattern="^edit_profile$"))
     app.add_handler(CallbackQueryHandler(done_profile, pattern="^done_profile$"))
+    app.add_handler(CallbackQueryHandler(update_username, pattern="^update_username$"))
     
     # app.add_handler(CallbackQueryHandler(edit_name, pattern="^edit_name$"))
 
@@ -1389,7 +1623,9 @@ def main():
     # main menu handler (general)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, main_menu))
 
+    # command handlers
     app.add_handler(CommandHandler('start', start))
+    app.add_handler(CommandHandler('help', help))
     app.add_handler(CommandHandler('cancel', cancel))
     app.add_handler(CommandHandler('browsejobs', browse_jobs))
     app.add_handler(CommandHandler('savedjobs', saved_jobs))
