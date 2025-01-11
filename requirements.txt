@@ -1,7 +1,10 @@
+torch
+openai
 pytest
 pymongo
 # psycopg2
 pytest-mock
+transformers
 pytest-asyncio
 psycopg2-binary
 python-telegram-bot
