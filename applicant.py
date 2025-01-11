@@ -41,7 +41,7 @@ signal.signal(signal.SIGINT, shutdown_handler)
 
 
 # Define states
-REGISTER, REGISTER_NAME, REGISTER_FIRSTNAME, REGISTER_LASTNAME, REGISTER_EMAIL, REGISTER_PHONE, REGISTER_GENDER, REGISTER_DOB, REGISTER_COUNTRY, REGISTER_CITY, CONFIRMATION, CHOOSE_ACTION, COVER_LETTER, NEW_CV, PORTFOLIO, CONFIRM_APPLY, CHOOSE_FIELD, EDIT_NAME, EDIT_USERNAME, EDIT_GENDER, EDIT_DOB, EDIT_COUNTRY, EDIT_CITY, EDIT_EMAIL, EDIT_PHONE, EDIT_DONE, GENERATE_JOB_TITLE, GENERATE_SKILLS, GENERATE_COMPANY = range(29)
+REGISTER, REGISTER_NAME, REGISTER_FIRSTNAME, REGISTER_LASTNAME, REGISTER_EMAIL, REGISTER_PHONE, REGISTER_GENDER, REGISTER_DOB, REGISTER_COUNTRY, REGISTER_CITY, CONFIRMATION, CHOOSE_ACTION, COVER_LETTER, NEW_CV, PORTFOLIO, CONFIRM_APPLY, CHOOSE_FIELD, EDIT_NAME, EDIT_USERNAME, EDIT_GENDER, EDIT_DOB, EDIT_COUNTRY, EDIT_CITY, EDIT_EMAIL, EDIT_PHONE, EDIT_DONE, GENERATE_JOB_TITLE, GENERATE_SKILLS, GENERATE_COMPANY, CONFIRM_GENERATE = range(30)
 
 # List of cities sorted alphabetically
 CITIES = sorted([
@@ -930,8 +930,8 @@ async def collect_company(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     keyboard = [
         [
-            InlineKeyboardButton("Accept", callback_data='accept_apply'),
-            InlineKeyboardButton("Reject", callback_data='reject_apply')
+            InlineKeyboardButton("Accept", callback_data='accept_cover_letter'),
+            InlineKeyboardButton("Reject", callback_data='skip_cover_letter')
         ],
     ]
     await context.bot.send_message(
@@ -940,8 +940,20 @@ async def collect_company(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="HTML",
     )
-    return NEW_CV
+    return CONFIRM_GENERATE
+
+
+async def generated_cover_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    context.user_data['cover_letter'] = query.message.text
     
+    if query.data == 'skip_cover_letter':
+        return COVER_LETTER
+    
+    if query.data == 'accept_cover_letter':
+        return COVER_LETTER
+
 
 async def new_cv(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.document:
@@ -1632,7 +1644,7 @@ apply_job_handler = ConversationHandler(
         COVER_LETTER: [
             MessageHandler(filters.TEXT & ~filters.COMMAND, cover_letter),
             CallbackQueryHandler(generate_cover_letter, pattern="^generate_cover_letter$"),
-            CallbackQueryHandler(skip_cover_letter, pattern="skip_cover_letter"),
+            CallbackQueryHandler(skip_cover_letter, pattern="^skip_cover_letter$"),
         ],
         GENERATE_JOB_TITLE: [
             MessageHandler(filters.TEXT & ~filters.COMMAND, collect_job_title)
@@ -1642,6 +1654,10 @@ apply_job_handler = ConversationHandler(
         ],
         GENERATE_COMPANY: [
             MessageHandler(filters.TEXT & ~filters.COMMAND, collect_company)
+        ],
+        CONFIRM_GENERATE: [
+            CallbackQueryHandler(generated_cover_letter, pattern="accept_cover_letter"),
+            CallbackQueryHandler(generated_cover_letter, pattern="skip_cover_letter"),
         ],
         NEW_CV: [
             MessageHandler(filters.Document.ALL & ~filters.COMMAND, new_cv),
