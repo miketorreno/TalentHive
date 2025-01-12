@@ -9,6 +9,10 @@ from datetime import date, datetime
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, ConversationHandler, MessageHandler, filters, ApplicationBuilder, ContextTypes
 
+from config import HUGGINGFACE_MODEL
+from utils.cover_letter import CoverLetterGenerator
+cover_letter_gen = CoverLetterGenerator(HUGGINGFACE_MODEL)
+
 
 # Logging
 logging.basicConfig(
@@ -37,7 +41,7 @@ signal.signal(signal.SIGINT, shutdown_handler)
 
 
 # Define states
-REGISTER, REGISTER_NAME, REGISTER_FIRSTNAME, REGISTER_LASTNAME, REGISTER_EMAIL, REGISTER_PHONE, REGISTER_GENDER, REGISTER_DOB, REGISTER_COUNTRY, REGISTER_CITY, CONFIRMATION, CHOOSE_ACTION, COVER_LETTER, NEW_CV, PORTFOLIO, CONFIRM_APPLY, CHOOSE_FIELD, EDIT_NAME, EDIT_USERNAME, EDIT_GENDER, EDIT_DOB, EDIT_COUNTRY, EDIT_CITY, EDIT_EMAIL, EDIT_PHONE, EDIT_DONE = range(26)
+REGISTER, REGISTER_NAME, REGISTER_FIRSTNAME, REGISTER_LASTNAME, REGISTER_EMAIL, REGISTER_PHONE, REGISTER_GENDER, REGISTER_DOB, REGISTER_COUNTRY, REGISTER_CITY, CONFIRMATION, CHOOSE_ACTION, COVER_LETTER, NEW_CV, PORTFOLIO, CONFIRM_APPLY, CHOOSE_FIELD, EDIT_NAME, EDIT_USERNAME, EDIT_GENDER, EDIT_DOB, EDIT_COUNTRY, EDIT_CITY, EDIT_EMAIL, EDIT_PHONE, EDIT_DONE, GENERATE_JOB_TITLE, GENERATE_SKILLS, GENERATE_COMPANY, CONFIRM_GENERATE = range(30)
 
 # List of cities sorted alphabetically
 CITIES = sorted([
@@ -773,7 +777,6 @@ async def apply_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     context.user_data['job_id'] = int(query.data.split("_")[-1])
-    keyboard = [[InlineKeyboardButton("Skip", callback_data='skip_cover_letter')]]
     user = get_user(update, context)
     
     # checking duplicate
@@ -788,8 +791,14 @@ async def apply_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return ConversationHandler.END
     
+    keyboard = [
+        [
+            InlineKeyboardButton("Skip", callback_data='skip_cover_letter'),
+            InlineKeyboardButton("✨ Generate with AI", callback_data='generate_cover_letter'),
+        ]
+    ]
     await query.edit_message_text(
-        "Please write cover letter or click skip \n\n<i>*enter less than 500 characters</i>",
+        "Would you like to write cover letter \n\n<i>*enter less than 500 characters</i>",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode='HTML'
     )
@@ -799,7 +808,12 @@ async def apply_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cover_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['cover_letter'] = update.message.text
     
-    keyboard = [[InlineKeyboardButton("Skip", callback_data='skip_new_cv')]]
+    keyboard = [
+        [
+            InlineKeyboardButton("Skip", callback_data='skip_new_cv'),
+            InlineKeyboardButton("✨ Generate with AI", callback_data='generate_new_cv'),
+        ]
+    ]
     await update.message.reply_text(
         "Would you like to submit a new CV \n\n<i>*please upload pdf or word document</i>",
         reply_markup=InlineKeyboardMarkup(keyboard),
@@ -834,7 +848,12 @@ async def skip_cover_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     context.user_data['cover_letter'] = None
     
-    keyboard = [[InlineKeyboardButton("Skip", callback_data='skip_new_cv')]]
+    keyboard = [
+        [
+            InlineKeyboardButton("Skip", callback_data='skip_new_cv'),
+            InlineKeyboardButton("✨ Generate with AI", callback_data='generate_new_cv'),
+        ]
+    ]
     await query.edit_message_text(
         "Would you like to submit a new CV \n\n<i>*please upload pdf or word document</i>",
         reply_markup=InlineKeyboardMarkup(keyboard),
@@ -864,6 +883,78 @@ async def skip_cover_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # return CONFIRM_APPLY
 
 
+async def generate_cover_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="Great! give me some details. \n\nWhat is the job title you're applying for?",
+        parse_mode="HTML",
+    )
+    return GENERATE_JOB_TITLE
+
+
+async def collect_job_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['job_title'] = update.message.text
+    await update.message.reply_text(
+        text="What are your top skills/experiences for this job?",
+        parse_mode="HTML",
+    )
+    return GENERATE_SKILLS
+
+
+async def collect_skills(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['skills'] = update.message.text
+    await update.message.reply_text(
+        text="What is the company's name?",
+        parse_mode="HTML",
+    )
+    return GENERATE_COMPANY
+
+
+async def collect_company(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="<i>Generating your cover letter...</i>",
+        parse_mode="HTML",
+    )
+    
+    context.user_data['company'] = update.message.text
+    user_data = context.user_data
+
+    generated = await cover_letter_gen.generate_cover_letter(
+        user_data['job_title'], 
+        user_data['skills'], 
+        user_data['company']
+    )
+    
+    print(f"\n generated : {generated} \n")
+    
+    keyboard = [
+        [
+            InlineKeyboardButton("Accept", callback_data='accept_cover_letter'),
+            InlineKeyboardButton("Reject", callback_data='skip_cover_letter')
+        ],
+    ]
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=f"{generated}",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="HTML",
+    )
+    return CONFIRM_GENERATE
+
+
+async def generated_cover_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    context.user_data['cover_letter'] = query.message.text
+    
+    if query.data == 'skip_cover_letter':
+        return COVER_LETTER
+    
+    if query.data == 'accept_cover_letter':
+        return COVER_LETTER
+
+
 async def new_cv(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.document:
         # Validate the file type
@@ -880,8 +971,9 @@ async def new_cv(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['new_cv'] = update.message.document.file_id
         
         keyboard = [[InlineKeyboardButton("Skip", callback_data='skip_portfolio')]]
+        
         await update.message.reply_text(
-            "Please provide portfolio links (separated by commas)",
+            "Would you like to add portfolio links \n\n<i>* separated by commas</i>",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='HTML'
         )
@@ -923,7 +1015,7 @@ async def skip_new_cv(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     keyboard = [[InlineKeyboardButton("Skip", callback_data='skip_portfolio')]]
     await query.edit_message_text(
-        "Please provide portfolio links (separated by commas)",
+        "Would you like to add portfolio links \n\n<i>* separated by commas</i>",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode='HTML'
     )
@@ -1551,7 +1643,21 @@ apply_job_handler = ConversationHandler(
     states={
         COVER_LETTER: [
             MessageHandler(filters.TEXT & ~filters.COMMAND, cover_letter),
-            CallbackQueryHandler(skip_cover_letter, pattern="skip_cover_letter")
+            CallbackQueryHandler(generate_cover_letter, pattern="^generate_cover_letter$"),
+            CallbackQueryHandler(skip_cover_letter, pattern="^skip_cover_letter$"),
+        ],
+        GENERATE_JOB_TITLE: [
+            MessageHandler(filters.TEXT & ~filters.COMMAND, collect_job_title)
+        ],
+        GENERATE_SKILLS: [
+            MessageHandler(filters.TEXT & ~filters.COMMAND, collect_skills)
+        ],
+        GENERATE_COMPANY: [
+            MessageHandler(filters.TEXT & ~filters.COMMAND, collect_company)
+        ],
+        CONFIRM_GENERATE: [
+            CallbackQueryHandler(generated_cover_letter, pattern="accept_cover_letter"),
+            CallbackQueryHandler(generated_cover_letter, pattern="skip_cover_letter"),
         ],
         NEW_CV: [
             MessageHandler(filters.Document.ALL & ~filters.COMMAND, new_cv),
