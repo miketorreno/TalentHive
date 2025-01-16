@@ -56,9 +56,6 @@ CITIES = sorted([
     "Tepi", "Waliso", "Weldiya", "Welkite", "Wukro", "Yirgalem", "Ziway"
 ])
 
-# Page size for the inline buttons
-PAGE_SIZE = 14  # 7 rows × 2 columns
-
 current_job_index = 0
 total_jobs = 0
 current_application_index = 0
@@ -188,8 +185,6 @@ async def browse_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global total_jobs
     total_jobs = len(job_list)
     # current_job_index = 0  # Reset index when starting
-    
-    # job_details = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \t{job[6]} \n\n"
     
     job_details = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \n{job[6]} \n\n<b>Requirements</b>: \n{job[7]} \n\n"
     
@@ -820,27 +815,6 @@ async def cover_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='HTML'
     )
     return NEW_CV
-    # # cur = conn.cursor()
-    # # cur.execute("SELECT * FROM jobs WHERE job_id = %s", (context.user_data['job_id'],))
-    # # job = cur.fetchone()
-    # job = get_job(update, context, context.user_data['job_id'])
-
-    # job_details = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \n{job[6]} \n\n<b>Requirements</b>: \n{job[7]} \n\n"
-    
-    # keyboard = [
-    #     [InlineKeyboardButton("Confirm", callback_data='confirm_apply')],
-    #     [InlineKeyboardButton("Cancel", callback_data='cancel_apply')],
-    # ]
-    
-    # await update.message.reply_text(
-    #     f"{job_details}"
-    #     f"<b>__________________</b>\n\n"
-    #     f"<b>Cover Letter</b> \n{context.user_data['cover_letter']}\n\n\n"
-    #     f"<b>Apply for the job?</b>",
-    #     reply_markup=InlineKeyboardMarkup(keyboard),
-    #     parse_mode='HTML'
-    # )
-    # return CONFIRM_APPLY
 
 
 async def skip_cover_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -860,27 +834,6 @@ async def skip_cover_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='HTML'
     )
     return NEW_CV
-    # # cur = conn.cursor()
-    # # cur.execute("SELECT * FROM jobs WHERE job_id = %s", (context.user_data['job_id'],))
-    # # job = cur.fetchone()
-    # job = get_job(update, context, context.user_data['job_id'])
-    
-    # job_details = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \n{job[6]} \n\n<b>Requirements</b>: \n{job[7]} \n\n"
-    
-    # keyboard = [
-    #     [InlineKeyboardButton("Confirm", callback_data='confirm_apply')],
-    #     [InlineKeyboardButton("Cancel", callback_data='cancel_apply')],
-    # ]
-    
-    # await query.edit_message_text(
-    #     f"{job_details}"
-    #     f"<b>__________________</b>\n\n"
-    #     f"<b>Cover Letter</b> \n{context.user_data['cover_letter']}\n\n\n"
-    #     f"<b>Apply for the job?</b>",
-    #     reply_markup=InlineKeyboardMarkup(keyboard),
-    #     parse_mode='HTML'
-    # )
-    # return CONFIRM_APPLY
 
 
 async def generate_cover_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -982,21 +935,6 @@ async def new_cv(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Please upload a valid document.")
         return NEW_CV
 
-    # context.user_data['new_cv'] = update.message.text
-    
-    # keyboard = [
-    #     [InlineKeyboardButton("Confirm", callback_data='confirm_apply')],
-    #     [InlineKeyboardButton("Cancel", callback_data='cancel_apply')],
-    # ]
-    # await update.message.reply_text(
-    #     f"<b>Cover Letter</b>: {context.user_data['cover_letter']}\n\n"
-    #     f"<b>CV</b>: {context.user_data['new_cv']}\n\n"
-    #     f"<b>Apply for the job?</b>",
-    #     reply_markup=InlineKeyboardMarkup(keyboard),
-    #     parse_mode='HTML'
-    # )
-    # return CONFIRM_APPLY
-
 
 async def unsupported_cv(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle unsupported file uploads."""
@@ -1020,19 +958,6 @@ async def skip_new_cv(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='HTML'
     )
     return PORTFOLIO
-    
-    # keyboard = [
-    #     [InlineKeyboardButton("Confirm", callback_data='confirm_apply')],
-    #     [InlineKeyboardButton("Cancel", callback_data='cancel_apply')],
-    # ]
-    # await query.edit_message_text(
-    #     f"<b>Cover Letter</b>: {context.user_data['cover_letter']}\n\n"
-    #     f"<b>CV</b>: {context.user_data['new_cv']}\n\n"
-    #     f"<b>Apply for the job?</b>",
-    #     reply_markup=InlineKeyboardMarkup(keyboard),
-    #     parse_mode='HTML'
-    # )
-    # return CONFIRM_APPLY
 
 
 async def portfolio(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1041,9 +966,6 @@ async def portfolio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     job = get_job(update, context, context.user_data['job_id'])
     
     job_details = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \n{job[6]} \n\n<b>Requirements</b>: \n{job[7]} \n\n"
-    
-    # if context.user_data['new_cv']:
-    #     file = await context.bot.get_file(context.user_data['new_cv'])
         
     keyboard = [
         [InlineKeyboardButton("Confirm", callback_data='confirm_apply')],
@@ -1061,24 +983,6 @@ async def portfolio(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='HTML'
     )
     return CONFIRM_APPLY
-    
-    # keyboard = [
-    #     [InlineKeyboardButton("Confirm", callback_data='confirm_apply')],
-    #     [InlineKeyboardButton("Cancel", callback_data='cancel_apply')],
-    # ]
-    # await update.message.reply_text(
-    #     f"<b>Cover Letter</b>: {context.user_data['cover_letter']}\n\n"
-    #     f"<b>CV</b>: {context.user_data['new_cv']}\n\n"
-    #     f"<b>Portfolio</b>: {context.user_data['portfolio']}\n\n"
-    #     f"<b>Apply for the job?</b>",
-    #     reply_markup=InlineKeyboardMarkup(keyboard),
-    #     parse_mode='HTML'
-    # )
-    # return CONFIRM_APPLY
-    
-    # await update.message.reply_text("Submitting your application...")
-    # await submit_application(update, context)
-    # return ConversationHandler.END
 
 
 async def skip_portfolio(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1109,24 +1013,6 @@ async def skip_portfolio(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='HTML'
     )
     return CONFIRM_APPLY
-    
-    # keyboard = [
-    #     [InlineKeyboardButton("Confirm", callback_data='confirm_apply')],
-    #     [InlineKeyboardButton("Cancel", callback_data='cancel_apply')],
-    # ]
-    # await query.edit_message_text(
-    #     f"<b>Cover Letter</b>: {context.user_data['cover_letter']}\n\n"
-    #     f"<b>CV</b>: {context.user_data['new_cv']}\n\n"
-    #     f"<b>Portfolio</b>: {context.user_data['portfolio']}\n\n"
-    #     f"<b>Apply for the job?</b>",
-    #     reply_markup=InlineKeyboardMarkup(keyboard),
-    #     parse_mode='HTML'
-    # )
-    # return CONFIRM_APPLY
-    
-    # await query.edit_message_text("Submitting your application...")
-    # await submit_application(update, context)
-    # return ConversationHandler.END
 
 
 async def confirm_apply(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1414,10 +1300,6 @@ async def register_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
         country = query.data
         
-        # if not country.isalpha():
-        #     await query.edit_message_text("Invalid country name.")
-        #     return REGISTER_COUNTRY
-        
         keyboard = get_all_cities()
         context.user_data['country'] = country
         await query.edit_message_text(
@@ -1436,11 +1318,6 @@ async def register_city(update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
         await query.answer()
         city = query.data
-        
-        # if not re.match(r'^[A-Za-z\s]+$', city):
-        # if not city.isalpha():
-        #     await query.edit_message_text("Invalid city name.")
-        #     return REGISTER_CITY
         
         context.user_data['city'] = city
         user_data = context.user_data
@@ -1602,35 +1479,6 @@ def get_all_cities():
     keyboard.append([InlineKeyboardButton("Others", callback_data="Others")]),
 
     return InlineKeyboardMarkup(keyboard)
-
-
-# def get_city_keyboard(page=0):
-    """Generate inline keyboard for cities with pagination."""
-    start_index = page * PAGE_SIZE
-    end_index = start_index + PAGE_SIZE
-    cities_page = CITIES[start_index:end_index]
-
-    # Create buttons for cities
-    buttons = [
-        InlineKeyboardButton(city, callback_data=f"city_{city}") for city in cities_page
-    ]
-
-    # Organize buttons into 2-column rows
-    keyboard = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]  # [CHANGE] Group buttons into rows
-
-    # Pagination buttons
-    navigation_buttons = []
-    if page > 0:  # [CHANGE] Add Prev button if applicable
-        navigation_buttons.append(InlineKeyboardButton("⬅️ Prev", callback_data=f"citypage_{page - 1}"))
-    if end_index < len(CITIES):  # [CHANGE] Add Next button if applicable
-        navigation_buttons.append(InlineKeyboardButton("Next ➡️", callback_data=f"citycitypage_{page + 1}"))
-
-    # Add navigation buttons as a row if present
-    if navigation_buttons:  # [CHANGE] Ensure navigation buttons are added as a valid row
-        keyboard.append(navigation_buttons)
-
-    return InlineKeyboardMarkup(keyboard)  # [CHANGE] Correctly return a structured keyboard
-
 
 
 
