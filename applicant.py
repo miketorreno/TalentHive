@@ -62,6 +62,8 @@ total_jobs = 0
 current_application_index = 0
 total_applications = 0
 
+GROUP_TOPIC_New_JobSeeker_Registration_ID = 14
+GROUP_TOPIC_New_Employer_Registration_ID = 17
 
 # Start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1359,8 +1361,8 @@ async def confirm_registration(update: Update, context: ContextTypes.DEFAULT_TYP
         await query.answer()
         
         if query.data == 'confirm':
-            user_data['telegram_id'] = update.effective_user.id
             user_data = context.user_data
+            user_data['telegram_id'] = update.effective_user.id
             username = update.effective_user.username
             role_id = 1  # Assuming role_id is 1 for the applicant role
 
@@ -1379,11 +1381,12 @@ async def confirm_registration(update: Update, context: ContextTypes.DEFAULT_TYP
                 return ConversationHandler.END
 
             await query.edit_message_text(
-                f"Registration complete \t 🎉 \n\nWelcome to HulumJobs <b>{user_data['firstname'].capitalize()}</b>!",
+                f"Registered successfully \t 🎉",
+                # f"Registered successfully \t 🎉 \n\nWelcome to HulumJobs <b>{user_data['firstname'].capitalize()}</b>!",
                 parse_mode='HTML'
             )
-            # TODO: better way to handle redirect to `start`
             
+            # TODO: implement a better way to handle redirect to `start`
             keyboard = [
                 ["Browse Jobs", "Saved Jobs"],
                 ["My Profile", "My Applications"],
@@ -1441,14 +1444,14 @@ async def onboarding_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 #         )
 #         conn.commit()
 
-#         await query.edit_message_text("🎉 \tRegistration complete! Welcome to HulumJobs!")
+#         await query.edit_message_text("🎉 \tRegistered successfully! Welcome to HulumJobs!")
 #     elif query.data == 'restart':
 #         await query.edit_message_text("Let's start over. Use /start to begin again.")
 #     return ConversationHandler.END
 
 
 
-# ? HELPERS (will be extracted to a separate helpers.py file)
+# * HELPERS (will be extracted to a separate helpers.py file)
 def get_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.callback_query:
         telegram_id = update.callback_query.from_user.id
@@ -1475,9 +1478,23 @@ def get_job(update: Update, context: ContextTypes.DEFAULT_TYPE, job_id):
     return job
 
 
-async def notify_group_on_registration(update: Update, context: ContextTypes.DEFAULT_TYPE, user_data):
+def format_date(date):
+    return date.strftime("%B %d, %Y")
+
+
+def format_date_for_db(date):
+    return datetime.strptime(date, "%Y-%m-%d")
+
+
+def is_valid_email(email):
+    # regex pattern for validating an email
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return bool(re.match(pattern, email))
+
+
+async def notify_group_on_registration(update: Update, context: ContextTypes.DEFAULT_TYPE, user_data, topic_id=GROUP_TOPIC_New_JobSeeker_Registration_ID):
     view_keyboard = [
-        [InlineKeyboardButton("View Profile", callback_data=f"view_user_{user_data['telegram_id']}")]
+        [InlineKeyboardButton("View Profile", callback_data=f"view_jobseeker_{user_data['telegram_id']}")]
     ]
     message = (
         f"\n🎉 <b>New User Registered!</b>\n\n"
@@ -1490,13 +1507,13 @@ async def notify_group_on_registration(update: Update, context: ContextTypes.DEF
         chat_id=os.getenv("HULUMJOBS_GROUP_ID"), 
         text=message, 
         reply_markup=InlineKeyboardMarkup(view_keyboard), 
-        parse_mode="HTML"
+        parse_mode="HTML",
+        message_thread_id=topic_id,
     )
-    
     return
 
 
-async def view_user_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def view_jobseeker_profile(update: Update, context: ContextTypes.DEFAULT_TYPE, topic_id=GROUP_TOPIC_New_JobSeeker_Registration_ID):
     """
         Handle the 'View Profile' button and display user details on the group.
     """
@@ -1512,7 +1529,7 @@ async def view_user_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=os.getenv("HULUMJOBS_GROUP_ID"), 
             text=f"<b>User Profile</b>\n\n"
-                f"<b>Role</b> - Applicant \n\n"
+                f"<b>Applicant</b>\n\n"
                 f"<b>👤 \tName</b>: \t{(user[3].split()[0]).capitalize()} {(user[3].split()[1]).capitalize() if len(user[3].split()) > 1 else ''} \n\n"
                 f"<b>\t&#64; \t\tUsername</b>: \t{user[4]} \n\n"
                 f"<b>👫 \tGender</b>: \t{user[5]} \n\n"
@@ -1521,7 +1538,8 @@ async def view_user_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"<b>🏙️ \tCity</b>: \t{user[10]} \n\n"
                 f"<b>📧 \tEmail</b>: \t{user[7]} \n\n" 
                 f"<b>📞 \tPhone</b>: \t{user[8]} \n\n",
-            parse_mode="HTML"
+            parse_mode="HTML",
+            message_thread_id=topic_id,
         )
     else:
         await context.bot.send_message(
@@ -1531,20 +1549,17 @@ async def view_user_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     
     return
-    
-
-def format_date(date):
-    return date.strftime("%B %d, %Y")
 
 
-def format_date_for_db(date):
-    return datetime.strptime(date, "%Y-%m-%d")
-
-
-def is_valid_email(email):
-    # regex pattern for validating an email
-    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    return bool(re.match(pattern, email))
+# async def get_group_topics(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     """Fetch topics (threads) in the group."""
+#     chat_id = os.getenv("HULUMJOBS_GROUP_ID")  # Replace with your group's chat ID
+#     response = await context.bot.get_chat(chat_id)
+#     print(f"\n Response: {response} \n")
+#     topics = response.available_topics  # Only available for forum-enabled groups
+#     print(f"\n Topics: {topics} \n")
+#     for topic in topics:
+#         print(f"\n Topic Name: {topic.name}, Thread ID: {topic.message_thread_id} \n")
 
 
 def get_all_cities():
@@ -1557,6 +1572,20 @@ def get_all_cities():
     keyboard.append([InlineKeyboardButton("Others", callback_data="Others")]),
 
     return InlineKeyboardMarkup(keyboard)
+
+
+# * DEBUG (will be extracted to a separate debug.py file)
+async def capture_group_topics(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("capturing group topics...")
+    """
+        Capture topics (message_thread_id) from messages in a forum group.
+    """
+    print(f"\n update.message: {update.message} \n")
+    # if update.message and update.message.is_topic_message:
+    #     topic_name = update.message.forum_topic_created.name
+    #     thread_id = update.message.message_thread_id
+    #     print(f"\n Topic Name: {topic_name}, Thread ID: {thread_id} \n")
+        # Save these details in your database or bot memory if needed
 
 
 
@@ -1643,8 +1672,12 @@ onboarding_handler = ConversationHandler(
 def main():
     app = ApplicationBuilder().token(os.getenv('APPLICANT_BOT_TOKEN')).build()
     
+    # * For DEBUG purposes ONLY
+    # app.add_handler(MessageHandler(filters.ALL, capture_group_topics))
+    
     # app.add_handler(CallbackQueryHandler(register_country, pattern="^citypage_.*"))
     
+    # Callback Query Handlers
     app.add_handler(CallbackQueryHandler(next_job, pattern="^job_.*"))
     app.add_handler(CallbackQueryHandler(next_application, pattern="^application_.*"))
     
@@ -1652,7 +1685,7 @@ def main():
     app.add_handler(CallbackQueryHandler(edit_profile, pattern="^edit_profile$"))
     app.add_handler(CallbackQueryHandler(done_profile, pattern="^done_profile$"))
     app.add_handler(CallbackQueryHandler(update_username, pattern="^update_username$"))
-    app.add_handler(CallbackQueryHandler(view_user_profile, pattern="^view_user_.*"))
+    app.add_handler(CallbackQueryHandler(view_jobseeker_profile, pattern="^view_jobseeker_.*"))
     
     # app.add_handler(CallbackQueryHandler(edit_name, pattern="^edit_name$"))
 
@@ -1660,10 +1693,10 @@ def main():
     app.add_handler(profile_handler)
     app.add_handler(onboarding_handler)
 
-    # main menu handler (general)
+    # * main menu handler (general)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, main_menu))
 
-    # command handlers
+    # * command handlers
     app.add_handler(CommandHandler('start', start))
     app.add_handler(CommandHandler('help', help))
     app.add_handler(CommandHandler('cancel', cancel))
@@ -1671,6 +1704,7 @@ def main():
     app.add_handler(CommandHandler('saved_jobs', saved_jobs))
     app.add_handler(CommandHandler('my_profile', my_profile))
     app.add_handler(CommandHandler('my_applications', my_applications))
+
     
     print("Bot is running...")
     app.run_polling(timeout=60)
