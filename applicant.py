@@ -11,7 +11,7 @@ from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, Conversa
 
 from config import HUGGINGFACE_MODEL
 from utils.cover_letter import CoverLetterGenerator
-cover_letter_gen = CoverLetterGenerator(HUGGINGFACE_MODEL)
+# cover_letter_gen = CoverLetterGenerator(HUGGINGFACE_MODEL)
 
 
 # Logging
@@ -31,13 +31,14 @@ conn = psycopg2.connect(
   port="5432"
 )
 
-def shutdown_handler(signal_received, frame):
-    if conn:
-        conn.close()
-        print("Database connection closed.")
-    sys.exit(0)
+# TODO: Research this block of code & use it or remove it
+# def shutdown_handler(signal_received, frame):
+#     if conn:
+#         conn.close()
+#         print("Database connection closed.")
+#     sys.exit(0)
 
-signal.signal(signal.SIGINT, shutdown_handler)
+# signal.signal(signal.SIGINT, shutdown_handler)
 
 
 # Define states
@@ -873,11 +874,12 @@ async def collect_company(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['company'] = update.message.text
     user_data = context.user_data
 
-    generated = await cover_letter_gen.generate_cover_letter(
-        user_data['job_title'], 
-        user_data['skills'], 
-        user_data['company']
-    )
+    # generated = await cover_letter_gen.generate_cover_letter(
+    #     user_data['job_title'], 
+    #     user_data['skills'], 
+    #     user_data['company']
+    # )
+    generated = "DONE!"
     
     print(f"\n generated : {generated} \n")
     
@@ -1073,7 +1075,13 @@ async def onboarding_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
         await query.answer()
         
-        await query.edit_message_text(text=f"Please enter your first name")
+        # await query.edit_message_text(text=f"Please enter your first name")
+    
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=f"Please enter your first name",
+            parse_mode='HTML'
+        )
         return REGISTER_FIRSTNAME
     except Exception as e:
         await update.effective_message.reply_text(
@@ -1351,8 +1359,8 @@ async def confirm_registration(update: Update, context: ContextTypes.DEFAULT_TYP
         await query.answer()
         
         if query.data == 'confirm':
+            user_data['telegram_id'] = update.effective_user.id
             user_data = context.user_data
-            telegram_id = update.effective_user.id
             username = update.effective_user.username
             role_id = 1  # Assuming role_id is 1 for the applicant role
 
@@ -1360,7 +1368,7 @@ async def confirm_registration(update: Update, context: ContextTypes.DEFAULT_TYP
                 cur = conn.cursor()
                 cur.execute(
                     "INSERT INTO users (telegram_id, role_id, name, username, email, phone, gender, dob, country, city) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                    (telegram_id, role_id, f"{user_data['firstname']} {user_data['lastname']}", username, user_data['email'], user_data['phone'],
+                    (user_data['telegram_id'], role_id, f"{user_data['firstname']} {user_data['lastname']}", username, user_data['email'], user_data['phone'],
                      user_data.get('gender'), user_data.get('dob'), user_data['country'], user_data['city'])
                 )
                 conn.commit()
@@ -1394,8 +1402,13 @@ async def confirm_registration(update: Update, context: ContextTypes.DEFAULT_TYP
                 reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True),
                 parse_mode='HTML'
             )
+            
+            # Notify the group about the new registration
+            await notify_group_on_registration(update, context, user_data)
+
             # return REGISTER_COMPLETE
             # await update.message.reply_text("/start")
+            
         elif query.data == 'restart':
             await query.edit_message_text("Let's start over. Use /start to begin again.")
         return ConversationHandler.END
@@ -1448,12 +1461,77 @@ def get_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return user
 
 
+def get_user_from_telegram_id(update: Update, context: ContextTypes.DEFAULT_TYPE, telegram_id):    
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM users WHERE telegram_id = %s AND role_id = 1", (telegram_id,))
+    user = cur.fetchone()
+    return user
+
+
 def get_job(update: Update, context: ContextTypes.DEFAULT_TYPE, job_id):
     cur = conn.cursor()
     cur.execute("SELECT * FROM jobs WHERE job_id = %s", (job_id,))
     job = cur.fetchone()
     return job
 
+
+async def notify_group_on_registration(update: Update, context: ContextTypes.DEFAULT_TYPE, user_data):
+    view_keyboard = [
+        [InlineKeyboardButton("View Profile", callback_data=f"view_user_{user_data['telegram_id']}")]
+    ]
+    message = (
+        f"\n🎉 <b>New User Registered!</b>\n\n"
+        f"<b>Name</b>: {(user_data['firstname']).capitalize()} {(user_data['lastname']).capitalize() if len(user_data['lastname']) > 0 else ''}\n\n"
+        f"<b>Email</b>: {user_data['email']}\n\n"
+        f"<b>City</b>: {user_data['city']}\n\n"
+    )
+    
+    await context.bot.send_message(
+        chat_id=os.getenv("HULUMJOBS_GROUP_ID"), 
+        text=message, 
+        reply_markup=InlineKeyboardMarkup(view_keyboard), 
+        parse_mode="HTML"
+    )
+    
+    return
+
+
+async def view_user_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+        Handle the 'View Profile' button and display user details on the group.
+    """
+    query = update.callback_query
+    await query.answer()
+
+    # Extract user ID from callback data
+    telegram_id = query.data.split("_")[-1]
+    user = get_user_from_telegram_id(update, context, telegram_id)
+
+    # Display user details
+    if user:
+        await context.bot.send_message(
+            chat_id=os.getenv("HULUMJOBS_GROUP_ID"), 
+            text=f"<b>User Profile</b>\n\n"
+                f"<b>Role</b> - Applicant \n\n"
+                f"<b>👤 \tName</b>: \t{(user[3].split()[0]).capitalize()} {(user[3].split()[1]).capitalize() if len(user[3].split()) > 1 else ''} \n\n"
+                f"<b>\t&#64; \t\tUsername</b>: \t{user[4]} \n\n"
+                f"<b>👫 \tGender</b>: \t{user[5]} \n\n"
+                f"<b>🎂 \tAge</b>: \t{user[6]} \n\n"
+                f"<b>🌐 \tCountry</b>: \t{user[9]} \n\n"
+                f"<b>🏙️ \tCity</b>: \t{user[10]} \n\n"
+                f"<b>📧 \tEmail</b>: \t{user[7]} \n\n" 
+                f"<b>📞 \tPhone</b>: \t{user[8]} \n\n",
+            parse_mode="HTML"
+        )
+    else:
+        await context.bot.send_message(
+            chat_id=os.getenv("HULUMJOBS_GROUP_ID"), 
+            text="User not found.",
+            parse_mode="HTML"
+        )
+    
+    return
+    
 
 def format_date(date):
     return date.strftime("%B %d, %Y")
@@ -1574,6 +1652,7 @@ def main():
     app.add_handler(CallbackQueryHandler(edit_profile, pattern="^edit_profile$"))
     app.add_handler(CallbackQueryHandler(done_profile, pattern="^done_profile$"))
     app.add_handler(CallbackQueryHandler(update_username, pattern="^update_username$"))
+    app.add_handler(CallbackQueryHandler(view_user_profile, pattern="^view_user_.*"))
     
     # app.add_handler(CallbackQueryHandler(edit_name, pattern="^edit_name$"))
 
