@@ -155,7 +155,7 @@ async def confirm_registration(update: Update, context: ContextTypes.DEFAULT_TYP
         conn.commit()
         # cur.close()
         # conn.close()
-        await query.edit_message_text("🎉 Registration complete! Welcome to HulumJobs!")
+        await query.edit_message_text("🎉 Registered successfully! Welcome to HulumJobs!")
     elif query.data == 'restart':
         await query.edit_message_text("Let's start over. Use /start to begin again.")
     return ConversationHandler.END
