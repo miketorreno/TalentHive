@@ -63,7 +63,6 @@ current_application_index = 0
 total_applications = 0
 
 GROUP_TOPIC_New_JobSeeker_Registration_ID = 14
-GROUP_TOPIC_New_Employer_Registration_ID = 17
 
 # Start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1529,7 +1528,7 @@ async def view_jobseeker_profile(update: Update, context: ContextTypes.DEFAULT_T
         await context.bot.send_message(
             chat_id=os.getenv("HULUMJOBS_GROUP_ID"), 
             text=f"<b>User Profile</b>\n\n"
-                f"<b>Applicant</b>\n\n"
+                f"<b>Job Seeker</b>\n\n"
                 f"<b>👤 \tName</b>: \t{(user[3].split()[0]).capitalize()} {(user[3].split()[1]).capitalize() if len(user[3].split()) > 1 else ''} \n\n"
                 f"<b>\t&#64; \t\tUsername</b>: \t{user[4]} \n\n"
                 f"<b>👫 \tGender</b>: \t{user[5]} \n\n"
@@ -1599,7 +1598,7 @@ apply_job_handler = ConversationHandler(
         COVER_LETTER: [
             MessageHandler(filters.TEXT & ~filters.COMMAND, cover_letter),
             CallbackQueryHandler(generate_cover_letter, pattern="^generate_cover_letter$"),
-            CallbackQueryHandler(skip_cover_letter, pattern="^skip_cover_letter$"),
+            CallbackQueryHandler(skip_cover_letter, pattern="^skip_cover_letter$")
         ],
         GENERATE_JOB_TITLE: [
             MessageHandler(filters.TEXT & ~filters.COMMAND, collect_job_title)
@@ -1612,12 +1611,12 @@ apply_job_handler = ConversationHandler(
         ],
         CONFIRM_GENERATE: [
             CallbackQueryHandler(generated_cover_letter, pattern="accept_cover_letter"),
-            CallbackQueryHandler(generated_cover_letter, pattern="skip_cover_letter"),
+            CallbackQueryHandler(generated_cover_letter, pattern="skip_cover_letter")
         ],
         NEW_CV: [
-            MessageHandler(filters.Document.ALL & ~filters.COMMAND, new_cv),
+            MessageHandler(filters.Document.ALL, new_cv),
             MessageHandler(filters.ALL & ~filters.Document.ALL, unsupported_cv),
-            CallbackQueryHandler(skip_new_cv, pattern="skip_new_cv"),
+            CallbackQueryHandler(skip_new_cv, pattern="skip_new_cv")
         ],
         PORTFOLIO: [
             MessageHandler(filters.TEXT & ~filters.COMMAND, portfolio),
@@ -1625,8 +1624,8 @@ apply_job_handler = ConversationHandler(
         ],
         CONFIRM_APPLY: [
             CallbackQueryHandler(confirm_apply, pattern="confirm_apply"),
-            CallbackQueryHandler(cancel_apply, pattern="cancel_apply"),
-        ],
+            CallbackQueryHandler(cancel_apply, pattern="cancel_apply")
+        ]
     },
     fallbacks=[CommandHandler("cancel", cancel_apply)],
 )

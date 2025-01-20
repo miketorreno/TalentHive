@@ -30,10 +30,12 @@ Telegram bot that allows recruiters to post jobs and job seekers to browse & app
 
 ## Fixes
 
+- [ ] `conn.close()` research this stuff & close every connection
 - [ ] Change age to dob in the db (by subtracting it when saving & fetching it)
 - [ ] Add the ability to enter city name when registering, if it's not available in the list
 - [ ] Remove Reply Keyboard properly, when done using it or user is moved to other steps
 - [ ] Edit functionality at confirm_apply stage
+- [ ] Go line by line & refine end user messages *(with AI & Grammarly)*
 - [x] When user uploads new cv while it only checks for docs & text ... it won't respond to other file types. Just add a check for the rest types & change the filter on `MessageHandler(filters.Document.ALL & ~filters.COMMAND, new_cv),`
 - [X] use `get_user(update, context)` helper function whenever you need to get the user object
   - [x] on applicant bot

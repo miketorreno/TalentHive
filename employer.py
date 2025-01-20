@@ -26,7 +26,7 @@ conn = psycopg2.connect(
 
 
 # Define states
-REGISTER, REGISTER_NAME, REGISTER_FIRSTNAME, REGISTER_LASTNAME, REGISTER_EMAIL, REGISTER_PHONE, REGISTER_GENDER, REGISTER_DOB, REGISTER_COUNTRY, REGISTER_CITY, CONFIRMATION, CHOOSE_ACTION, SELECT_COMPANY, SELECT_CATEGORY, SELECT_TYPE, TITLE, DESCRIPTION, REQUIREMENTS, CITY, COUNTRY, SALARY, DEADLINE, CONFIRM_JOB = range(23)
+REGISTER, REGISTER_NAME, REGISTER_FIRSTNAME, REGISTER_LASTNAME, REGISTER_EMAIL, REGISTER_PHONE, REGISTER_GENDER, REGISTER_DOB, REGISTER_COUNTRY, REGISTER_CITY, CONFIRMATION, COMPANY_TYPE, STARTUP_TYPE, COMPANY_NAME, TRADE_LICENSE, EMPLOYER_TYPE, EMPLOYER_PHOTO, COMPANY_AUTH_LETTER, CONFIRM_COMPANY, CHOOSE_ACTION, SELECT_COMPANY, SELECT_CATEGORY, SELECT_TYPE, TITLE, DESCRIPTION, REQUIREMENTS, CITY, COUNTRY, SALARY, DEADLINE, CONFIRM_JOB = range(31)
 
 # List of cities sorted alphabetically
 CITIES = sorted([
@@ -41,7 +41,7 @@ CITIES = sorted([
     "Tepi", "Waliso", "Weldiya", "Welkite", "Wukro", "Yirgalem", "Ziway"
 ])
 
-GROUP_TOPIC_New_JobSeeker_Registration_ID = 14
+GROUP_TOPIC_New_Company_Created_ID = 67
 GROUP_TOPIC_New_Employer_Registration_ID = 17
 
 
@@ -126,6 +126,390 @@ def fetch_categories():
     return categories
 
 
+# Create company conversation
+async def create_company_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        query = update.callback_query
+        await query.answer()
+        await query.message.reply_text("Let's create your company profile.")
+        
+        keyboard = [
+            [
+                InlineKeyboardButton("Company", callback_data='company'), 
+                InlineKeyboardButton("Startup", callback_data='startup')
+            ]
+        ]
+    
+        await query.message.reply_text(
+            "Please select the type of your company",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+        return COMPANY_TYPE
+    except Exception as e:
+        await update.effective_message.reply_text(
+            "An error occurred creating your company. Please try again."
+        )
+        # Optionally log the error for debugging
+        print(f"Error in create_company_start: {e}")
+        return ConversationHandler.END
+
+
+async def company_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        query = update.callback_query
+        await query.answer()
+        
+        context.user_data['company_type'] = query.data
+        if query.data == 'company':
+            context.user_data['startup_type'] = None
+            await query.message.reply_text(
+                "Please enter the name of your company",
+                parse_mode='HTML'
+            )
+            return COMPANY_NAME
+        elif query.data == 'startup':
+            keyboard = [
+                [
+                    InlineKeyboardButton("Licensed", callback_data='licensed'), 
+                    InlineKeyboardButton("Unlicensed", callback_data='unlicensed')
+                ]
+            ]
+            await query.message.reply_text(
+                "Please select the type of your startup",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return STARTUP_TYPE
+        else:
+            await update.message.reply_text(
+                "An error occurred with your company type. Please try again."
+            )
+            # Optionally log the error for debugging
+            print(f"Error in company_photo: There's a third company type")
+            return ConversationHandler.END
+    except Exception as e:
+        await query.edit_message_text(
+            "An error occurred while saving your company type. Please try again."
+        )
+        # Optionally log the error for debugging
+        print(f"Error in company_type: {e}")
+        return ConversationHandler.END
+
+
+async def startup_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        query = update.callback_query
+        await query.answer()
+        
+        context.user_data['startup_type'] = query.data
+        await query.message.reply_text(
+            "Please enter the name of your company",
+            parse_mode='HTML'
+        )
+        return COMPANY_NAME
+    except Exception as e:
+        await query.edit_message_text(
+            "An error occurred while saving your startup type. Please try again."
+        )
+        # Optionally log the error for debugging
+        print(f"Error in startup_type: {e}")
+        return ConversationHandler.END
+
+
+async def company_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        name = update.message.text.strip()
+
+        if not name.isalnum():
+            await update.message.reply_text(
+                "<i>* Company name should only contain alphabets and numbers.</i>\n\nPlease enter the name your company",
+                parse_mode='HTML'
+            )
+            return COMPANY_NAME
+        
+        context.user_data['name'] = name
+        if context.user_data['company_type'] == 'company' or context.user_data['startup_type'] == 'licensed':
+            await update.message.reply_text(
+                "Please upload your trade license \n\n<i>* you can upload pdf or photo</i>",
+                parse_mode='HTML'
+            )
+            return TRADE_LICENSE
+        elif context.user_data['startup_type'] == 'unlicensed':
+            context.user_data["trade_license"] = None
+            keyboard = [
+                [
+                    InlineKeyboardButton("Founder", callback_data='founder'), 
+                    InlineKeyboardButton("Recruiter", callback_data='recruiter')
+                ]
+            ]
+        
+            await update.message.reply_text(
+                "Are you the founder or recruiter?",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return EMPLOYER_TYPE
+        else:
+            await update.message.reply_text(
+                "An error occurred while saving your company name. Please try again."
+            )
+            # Optionally log the error for debugging
+            print(f"Error in company_name: There's a third company type")
+            return ConversationHandler.END
+    except Exception as e:
+        await update.message.reply_text(
+            "An error occurred while saving your company name. Please try again."
+        )
+        # Optionally log the error for debugging
+        print(f"Error in company_name: {e}")
+        return ConversationHandler.END
+
+
+async def trade_license(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        if not update.message.photo:
+            await update.message.reply_text(
+                "<i>* Invalid format.</i>\n\nPlease upload your trade license",
+                parse_mode='HTML'
+            )
+            return TRADE_LICENSE
+        
+        context.user_data["trade_license"] = update.message.photo[-1].file_id
+        keyboard = [
+            [
+                InlineKeyboardButton("General Manager", callback_data='general_manager'), 
+                InlineKeyboardButton("Recruiter", callback_data='recruiter')
+            ]
+        ]
+    
+        await update.message.reply_text(
+            "Are you the general manager or recruiter?",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+        return EMPLOYER_TYPE
+    except Exception as e:
+        await update.message.reply_text(
+            "An error occurred while uploading your trade license. Please try again."
+        )
+        # Optionally log the error for debugging
+        print(f"Error in trade_license: {e}")
+        return ConversationHandler.END
+
+
+async def unsupported_trade_license(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        await update.message.reply_text(
+            "<i>* Invalid file type</i>\n\nPlease upload a PHOTO",
+            parse_mode='HTML'
+        )
+        return TRADE_LICENSE
+    except Exception as e:
+        await update.message.reply_text(
+            "An error occurred with your trade license. Please try again."
+        )
+        # Optionally log the error for debugging
+        print(f"Error in unsupported_trade_license: {e}")
+        return ConversationHandler.END
+
+
+async def employer_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        query = update.callback_query
+        await query.answer()
+        
+        context.user_data['employer_type'] = query.data
+        await query.message.reply_text(
+            "Please upload your ID photo",
+            parse_mode='HTML'
+        )
+        return EMPLOYER_PHOTO
+    except Exception as e:
+        await query.edit_message_text(
+            "An error occurred while saving employer type. Please try again."
+        )
+        # Optionally log the error for debugging
+        print(f"Error in employer_type: {e}")
+        return ConversationHandler.END
+
+
+async def employer_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        if not update.message.photo:
+            await update.message.reply_text(
+                "<i>* Invalid format.</i>\n\nPlease upload your ID photo",
+                parse_mode='HTML'
+            )
+            return EMPLOYER_PHOTO
+        
+        context.user_data["employer_photo"] = update.message.photo[-1].file_id
+        keyboard = [
+            [
+                InlineKeyboardButton("Confirm", callback_data='confirm_company'),
+                InlineKeyboardButton("Cancel", callback_data='cancel_company')
+            ]
+        ]
+        company_type = context.user_data['company_type']
+        startup_type = context.user_data['startup_type'] if company_type != 'company' else ''
+        company_details = (
+            f"<b>COMPANY INFO</b>\n\n"
+            f"Company Name: {context.user_data["name"]}\n\n"
+            # f"Company Type: {context.user_data["company_type"]}\n\n"
+            f"{'Type: ' + startup_type.capitalize() + 'Startup \n\n' if company_type == 'startup' else ''}"
+            f"{'Trade License Photo: \t✅ \n\n' if startup_type != 'unlicensed' else ''}"
+            f"Employer Photo: \t✅\n\n"
+        )
+        if context.user_data['employer_type'] == 'general_manager' or context.user_data['employer_type'] == 'founder':
+            await update.message.reply_text(
+                text=company_details,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return CONFIRM_COMPANY
+        # elif context.user_data['employer_type'] == 'founder':
+        #     await update.message.reply_text(
+        #         text=company_details,
+        #         reply_markup=InlineKeyboardMarkup(keyboard),
+        #         parse_mode='HTML'
+        #     )
+        #     return CONFIRM_COMPANY
+        elif context.user_data['employer_type'] == 'recruiter':
+            await update.message.reply_text(
+                "<b>Please upload recruiter authorization letter</b>",
+                parse_mode='HTML'
+            )
+            return COMPANY_AUTH_LETTER
+        else:
+            await update.message.reply_text(
+                "An error occurred while uploading your photo. Please try again."
+            )
+            # Optionally log the error for debugging
+            print(f"Error in employer_photo: There's a fourth employer type")
+            return ConversationHandler.END
+    except Exception as e:
+        await update.message.reply_text(
+            "An error occurred while uploading your photo. Please try again."
+        )
+        # Optionally log the error for debugging
+        print(f"Error in employer_photo: {e}")
+        return ConversationHandler.END
+
+
+async def unsupported_employer_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        await update.message.reply_text(
+            "<i>* Invalid file type</i>\n\nPlease upload a PHOTO",
+            parse_mode='HTML'
+        )
+        return EMPLOYER_PHOTO
+    except Exception as e:
+        await update.message.reply_text(
+            "An error occurred with your photo. Please try again."
+        )
+        # Optionally log the error for debugging
+        print(f"Error in unsupported_employer_photo: {e}")
+        return ConversationHandler.END
+
+
+async def company_auth_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message.document:
+        # Validate the file type
+        file_name = update.message.document.file_name
+        if not file_name.endswith(('.pdf', '.doc', '.docx')):
+            await update.message.reply_text(
+                "Invalid file type. Please upload a PDF or Word document.",
+                parse_mode='HTML'
+            )
+            return COMPANY_AUTH_LETTER
+
+        # Save the file ID
+        context.user_data['auth_letter'] = update.message.document.file_id
+        keyboard = [
+            [
+                InlineKeyboardButton("Confirm", callback_data='confirm_company'),
+                InlineKeyboardButton("Cancel", callback_data='cancel_company')
+            ]
+        ]
+        company_type = context.user_data['company_type']
+        startup_type = context.user_data['startup_type'] if company_type != 'company' else ''
+        auth_letter = context.user_data['auth_letter']
+        company_details = (
+            f"<b>COMPANY INFO</b>\n\n"
+            f"Company Name: {context.user_data["name"]}\n\n"
+            # f"Company Type: {context.user_data["company_type"]}\n\n"
+            f"{'Type: ' + startup_type.capitalize() + 'Startup \n\n' if company_type == 'startup' else ''}"
+            f"{'Trade License Photo: \t✅ \n\n' if startup_type != 'unlicensed' else ''}"
+            f"Employer Photo: \t✅\n\n"
+            f"{'Authorization Letter: \t✅' if auth_letter else ''}\n\n"
+        )
+        await update.message.reply_text(
+            text=company_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+        return CONFIRM_COMPANY
+    else:
+        await update.message.reply_text("Please upload a valid document.")
+        return COMPANY_AUTH_LETTER
+
+
+async def unsupported_auth_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        await update.message.reply_text(
+            "<i>* Invalid file type</i>\n\nPlease upload a PDF or Word document",
+            parse_mode='HTML'
+        )
+        return COMPANY_AUTH_LETTER
+    except Exception as e:
+        await update.message.reply_text(
+            "An error occurred with your authorization letter. Please try again."
+        )
+        # Optionally log the error for debugging
+        print(f"Error in unsupported_auth_letter: {e}")
+        return ConversationHandler.END
+
+
+async def confirm_company(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    user = get_user(update, context)
+    data = context.user_data
+    
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO companies (user_id, type, startup, name, trade_license, employer_photo, created_by) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+        (user[0], data["company_type"], data["startup_type"], data["name"], data["trade_license"], data["employer_photo"], data["employer_type"]),
+    )
+    conn.commit()
+    
+    # Notify the group about the new company creation
+    await notify_group_on_creation(update, context, data)
+
+    await query.edit_message_text("Company created successfully!")
+    return ConversationHandler.END
+
+
+async def cancel_company(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.callback_query:
+        query = update.callback_query
+        await query.edit_message_text("Company creation canceled.")
+    else:
+        await update.message.reply_text("Company creation canceled.")
+
+    return ConversationHandler.END
+
+
+async def cancel_company_creation(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.callback_query:
+        await update.callback_query.edit_message_text("Company creation canceled.")
+    else:
+        await update.message.reply_text("Company creation canceled.")
+    return ConversationHandler.END
+
+
+
+# Post job conversation
 async def post_job_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Let's post a new job.")
     user = get_user(update, context)
@@ -139,7 +523,7 @@ async def post_job_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("No companies found. Please register a company first.")
         return ConversationHandler.END
 
-    buttons = [[InlineKeyboardButton(company[2], callback_data=f"company_{company[0]}")] for company in companies]
+    buttons = [[InlineKeyboardButton(company[4], callback_data=f"company_{company[0]}")] for company in companies]
     await update.message.reply_text(
         "Please select company:",
         reply_markup=InlineKeyboardMarkup(buttons),
@@ -415,17 +799,28 @@ async def my_companies(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cur = conn.cursor()
     cur.execute("SELECT * FROM companies WHERE user_id = %s", (user[0],))
     companies = cur.fetchall()
+    
+    keyboard = [
+        [InlineKeyboardButton("Add Company", callback_data='create_company')],
+    ]
 
     if not companies:
-        await update.message.reply_text("You haven't created any companies yet.")
+        await update.message.reply_text(
+            "You haven't created any companies yet.",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
         return
 
     # Format the list of companies
     message = "**Your Companies:** \n\n"
     for company in companies:
-        message += f"- **ID:** {company[0]}\n  **Name:** {company[2]}\n  **Description:** {company[3]}\n  **Approval status:** {company[4]}\n\n"
+        message += f"- **ID:** {company[0]}\n  **Name:** {company[4]}\n  **Description:** {company[7]}\n  **Approval status:** {company[8]}\n\n"
 
-    await update.message.reply_text(message, parse_mode="Markdown")
+    await update.message.reply_text(
+        text=message, 
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="Markdown"
+    )
 
 
 async def my_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -847,6 +1242,26 @@ async def view_employer_profile(update: Update, context: ContextTypes.DEFAULT_TY
     return
 
 
+async def notify_group_on_creation(update: Update, context: ContextTypes.DEFAULT_TYPE, user_data, topic_id=GROUP_TOPIC_New_Company_Created_ID):
+    view_keyboard = [
+        [InlineKeyboardButton("View Company", callback_data=f"view_company_")]
+    ]
+    message = (
+        f"\n🎉 <b>New Company Created!</b>\n\n"
+        f"<b>Company Name</b>: {context.user_data["name"]}\n\n"
+        f"<b>Type</b>: {user_data["startup_type"].capitalize() + 'Startup' if user_data["company_type"] == 'startup' else user_data["company_type"].capitalize()}\n\n"
+    )
+    
+    await context.bot.send_message(
+        chat_id=os.getenv("HULUMJOBS_GROUP_ID"), 
+        text=message, 
+        reply_markup=InlineKeyboardMarkup(view_keyboard), 
+        parse_mode="HTML",
+        message_thread_id=topic_id,
+    )
+    return
+
+
 def get_all_cities():
     buttons = [
         InlineKeyboardButton(city, callback_data=f"{city}") for city in CITIES
@@ -871,6 +1286,36 @@ async def capture_group_topics(update: Update, context: ContextTypes.DEFAULT_TYP
     #     thread_id = update.message.message_thread_id
     #     print(f"\n Topic Name: {topic_name}, Thread ID: {thread_id} \n")
         # Save these details in your database or bot memory if needed
+
+
+
+# Conversation handlers
+company_creation_handler = ConversationHandler(
+    entry_points=[CallbackQueryHandler(create_company_start, pattern='create_company')],
+    states={
+        COMPANY_TYPE: [CallbackQueryHandler(company_type)],
+        STARTUP_TYPE: [CallbackQueryHandler(startup_type)],
+        COMPANY_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, company_name)],
+        TRADE_LICENSE: [
+            MessageHandler(filters.PHOTO, trade_license),
+            MessageHandler(filters.ALL & ~filters.PHOTO, unsupported_trade_license)
+        ],
+        EMPLOYER_TYPE: [CallbackQueryHandler(employer_type)],
+        EMPLOYER_PHOTO: [
+            MessageHandler(filters.PHOTO, employer_photo),
+            MessageHandler(filters.ALL & ~filters.PHOTO, unsupported_employer_photo)
+        ],
+        COMPANY_AUTH_LETTER: [
+            MessageHandler(filters.Document.ALL, company_auth_letter),
+            MessageHandler(filters.ALL & ~filters.Document.ALL, unsupported_auth_letter)
+        ],
+        CONFIRM_COMPANY: [
+            CallbackQueryHandler(confirm_company, pattern="confirm_company"),
+            CallbackQueryHandler(cancel_company, pattern="cancel_company"),
+        ]
+    },
+    fallbacks=[CommandHandler("cancel", cancel_company_creation)],
+)
 
 
 
@@ -927,6 +1372,7 @@ def main():
     app.add_handler(CallbackQueryHandler(view_employer_profile, pattern="^view_employer_.*"))
     
     app.add_handler(post_job_handler)
+    app.add_handler(company_creation_handler)
     app.add_handler(onboarding_handler)
 
     # main menu handler (general)

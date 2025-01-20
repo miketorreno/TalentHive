@@ -40,10 +40,15 @@ VALUES (123456789, 1, 'John Doe', 'johndoe', 'Male', '1990-01-01', 'johndoe@exam
 CREATE TABLE companies (
   company_id SERIAL PRIMARY KEY,
   user_id INT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  type VARCHAR NOT NULL,
+  startup VARCHAR,
   name TEXT NOT NULL,
+  trade_license TEXT,
+  employer_photo TEXT,
   description TEXT,
   status VARCHAR CHECK (status IN ('pending', 'approved', 'rejected')) DEFAULT 'pending',
   verified BOOLEAN DEFAULT FALSE,
+  created_by VARCHAR,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP,
   deleted_at TIMESTAMP
@@ -92,7 +97,7 @@ CREATE TABLE jobs (
   requirements TEXT,
   city VARCHAR,
   country VARCHAR,
-  salary VARCHAR,
+  salary NUMERIC CHECK (salary > 0),
   deadline DATE,
   status VARCHAR CHECK (status IN ('pending', 'approved', 'rejected')) DEFAULT 'pending',
   promoted BOOLEAN DEFAULT FALSE,
@@ -124,7 +129,7 @@ CREATE TABLE applications (
   cv VARCHAR,
   portfolio JSON,
   note TEXT,
-  status VARCHAR CHECK (status IN ('applied', 'shortlisted', 'rejected')) DEFAULT 'applied',
+  status VARCHAR CHECK (status IN ('applied', 'seen', 'shortlisted', 'rejected')) DEFAULT 'applied',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP,
   deleted_at TIMESTAMP
