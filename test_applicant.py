@@ -96,7 +96,7 @@ def mock_show_job(mocker):
 
 
 
-# ? HELPER FUNCTIONS
+# * HELPER FUNCTIONS
 # TODO: Test get_user function
 # ### Test: get_user ###
 # def test_get_user(mock_conn, mock_update, mock_context):
@@ -194,7 +194,7 @@ def test_get_all_cities():
 
 
 
-# ? MAIN FUNCTIONS
+# * MAIN FUNCTIONS
 ### Test: show_job ###
 @pytest.mark.asyncio
 async def test_show_job_found_with_message(mock_conn, mock_update_message, mock_context):

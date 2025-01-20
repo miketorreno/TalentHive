@@ -92,7 +92,7 @@ async def main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     choice = update.message.text
     choice = choice.lower()
 
-    # ? "post a job" is handled by another
+    # * "post a job" is handled by another
     # if choice == "post a job":
         # await update.message.reply_text("Post a job")
         # await post_a_job(update, context)
@@ -111,19 +111,94 @@ async def main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-# Posting a job
-def fetch_companies(user_id):
+async def my_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """List all jobs posted by the user."""
+    user = get_user(update, context)
+    
+    # Fetch jobs
     cur = conn.cursor()
-    cur.execute("SELECT company_id, name FROM companies WHERE user_id = %s", (user_id,))
+    cur.execute("SELECT * FROM jobs WHERE user_id = %s", (user[0],))
+    jobs = cur.fetchall()
+    
+    if not jobs:
+        await update.message.reply_text("You haven't posted any jobs yet.")
+        return
+
+    # Format the list of jobs
+    message = "**Your Jobs Posts:** \n\n"
+    for job in jobs:
+        message += f"- **ID:** {job[0]}\n  **Title:** {job[5]}\n  **Description:** {job[6]}\n  **Approval status:** {job[12]}\n\n"
+
+    await update.message.reply_text(message, parse_mode="Markdown")
+
+
+async def my_companies(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """List all companies owned by the user."""
+    user = get_user(update, context)
+    
+    # Fetch companies
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM companies WHERE user_id = %s", (user[0],))
     companies = cur.fetchall()
-    return companies
+    
+    keyboard = [
+        [InlineKeyboardButton("Add Company", callback_data='create_company')],
+    ]
+
+    if not companies:
+        await update.message.reply_text(
+            "You haven't created any companies yet.",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return
+
+    # Format the list of companies
+    message = "**Your Companies:** \n\n"
+    for company in companies:
+        message += f"- **ID:** {company[0]}\n  **Name:** {company[4]}\n  **Description:** {company[7]}\n  **Approval status:** {company[8]}\n\n"
+
+    await update.message.reply_text(
+        text=message, 
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="Markdown"
+    )
 
 
-def fetch_categories():
-    cur = conn.cursor()
-    cur.execute("SELECT category_id, name FROM categories")
-    categories = cur.fetchall()
-    return categories
+async def my_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = get_user(update, context)
+    
+    await update.message.reply_text(
+        text=f"<b>My Profile</b> \n\n"
+            f"<b>👤 \tName</b>: \t{user[3]} \n\n"
+            f"<b>👤 \tUsername</b>: \t{user[4]} \n\n"
+            f"<b>👤 \tGender</b>: \t{user[5]} \n\n"
+            f"<b>🎂 \tDate of Birth</b>: \t{user[6]} \n\n"
+            f"<b>🌐 \tCountry</b>: \t{user[9]} \n\n"
+            f"<b>🏙️ \tCity</b>: \t{user[10]} \n\n"
+            f"<b>📧 \tEmail</b>: \t{user[7]} \n\n"
+            f"<b>📞 \tPhone</b>: \t{user[8]} \n\n",
+        parse_mode='HTML'
+    )
+    return
+
+
+# TODO: postponed
+async def job_notifications(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Job Notifications")
+
+
+async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        text=f"<b>Help</b>\n\n"
+            "<b>Post a Job</b> - find the right candidates for you \n\n"
+            "<b>My Job posts</b> - view & manage your job posts \n\n"
+            "<b>My Companies</b> - add & manage your companies \n\n"
+            "<b>Notifications</b> - customize notifications you wanna receive \n\n"
+            "<b>My Profile</b> - manage your profile \n\n"
+            "<b>Help</b> - show help message \n\n",
+        parse_mode="HTML",
+    )
+    return
 
 
 # Create company conversation
@@ -413,45 +488,53 @@ async def unsupported_employer_photo(update: Update, context: ContextTypes.DEFAU
 
 
 async def company_auth_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.document:
-        # Validate the file type
-        file_name = update.message.document.file_name
-        if not file_name.endswith(('.pdf', '.doc', '.docx')):
+    try:
+        if update.message.document:
+            # Validate the file type
+            file_name = update.message.document.file_name
+            if not file_name.endswith(('.pdf', '.doc', '.docx')):
+                await update.message.reply_text(
+                    "Invalid file type. Please upload a PDF or Word document.",
+                    parse_mode='HTML'
+                )
+                return COMPANY_AUTH_LETTER
+
+            # Save the file ID
+            context.user_data['auth_letter'] = update.message.document.file_id
+            keyboard = [
+                [
+                    InlineKeyboardButton("Confirm", callback_data='confirm_company'),
+                    InlineKeyboardButton("Cancel", callback_data='cancel_company')
+                ]
+            ]
+            company_type = context.user_data['company_type']
+            startup_type = context.user_data['startup_type'] if company_type != 'company' else ''
+            auth_letter = context.user_data['auth_letter']
+            company_details = (
+                f"<b>COMPANY INFO</b>\n\n"
+                f"Company Name: {context.user_data["name"]}\n\n"
+                # f"Company Type: {context.user_data["company_type"]}\n\n"
+                f"{'Type: ' + startup_type.capitalize() + 'Startup \n\n' if company_type == 'startup' else ''}"
+                f"{'Trade License Photo: \t✅ \n\n' if startup_type != 'unlicensed' else ''}"
+                f"Employer Photo: \t✅\n\n"
+                f"{'Authorization Letter: \t✅' if auth_letter else ''}\n\n"
+            )
             await update.message.reply_text(
-                "Invalid file type. Please upload a PDF or Word document.",
+                text=company_details,
+                reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode='HTML'
             )
+            return CONFIRM_COMPANY
+        else:
+            await update.message.reply_text("Please upload a valid document.")
             return COMPANY_AUTH_LETTER
-
-        # Save the file ID
-        context.user_data['auth_letter'] = update.message.document.file_id
-        keyboard = [
-            [
-                InlineKeyboardButton("Confirm", callback_data='confirm_company'),
-                InlineKeyboardButton("Cancel", callback_data='cancel_company')
-            ]
-        ]
-        company_type = context.user_data['company_type']
-        startup_type = context.user_data['startup_type'] if company_type != 'company' else ''
-        auth_letter = context.user_data['auth_letter']
-        company_details = (
-            f"<b>COMPANY INFO</b>\n\n"
-            f"Company Name: {context.user_data["name"]}\n\n"
-            # f"Company Type: {context.user_data["company_type"]}\n\n"
-            f"{'Type: ' + startup_type.capitalize() + 'Startup \n\n' if company_type == 'startup' else ''}"
-            f"{'Trade License Photo: \t✅ \n\n' if startup_type != 'unlicensed' else ''}"
-            f"Employer Photo: \t✅\n\n"
-            f"{'Authorization Letter: \t✅' if auth_letter else ''}\n\n"
-        )
+    except Exception as e:
         await update.message.reply_text(
-            text=company_details,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
+            "An error occurred while uploading your authorization letter. Please try again."
         )
-        return CONFIRM_COMPANY
-    else:
-        await update.message.reply_text("Please upload a valid document.")
-        return COMPANY_AUTH_LETTER
+        # Optionally log the error for debugging
+        print(f"Error in company_auth_letter: {e}")
+        return ConversationHandler.END
 
 
 async def unsupported_auth_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -471,23 +554,31 @@ async def unsupported_auth_letter(update: Update, context: ContextTypes.DEFAULT_
 
 
 async def confirm_company(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    user = get_user(update, context)
-    data = context.user_data
-    
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO companies (user_id, type, startup, name, trade_license, employer_photo, created_by) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-        (user[0], data["company_type"], data["startup_type"], data["name"], data["trade_license"], data["employer_photo"], data["employer_type"]),
-    )
-    conn.commit()
-    
-    # Notify the group about the new company creation
-    await notify_group_on_creation(update, context, data)
+    try:
+        query = update.callback_query
+        await query.answer()
+        user = get_user(update, context)
+        data = context.user_data
+        
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO companies (user_id, type, startup, name, trade_license, employer_photo, created_by) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            (user[0], data["company_type"], data["startup_type"], data["name"], data["trade_license"], data["employer_photo"], data["employer_type"]),
+        )
+        conn.commit()
+        
+        # Notify the group about the new company creation
+        await notify_group_on_creation(update, context, data)
 
-    await query.edit_message_text("Company created successfully!")
-    return ConversationHandler.END
+        await query.edit_message_text("Company created successfully!")
+        return ConversationHandler.END
+    except Exception as e:
+        await update.message.reply_text(
+            "An error occurred while saving your company details. Please try again."
+        )
+        # Optionally log the error for debugging
+        print(f"Error in confirm_company: {e}")
+        return ConversationHandler.END
 
 
 async def cancel_company(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -769,95 +860,6 @@ async def cancel_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Job posting canceled.")
     return ConversationHandler.END
 
-
-async def my_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """List all jobs posted by the user."""
-    user = get_user(update, context)
-    
-    # Fetch jobs
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM jobs WHERE user_id = %s", (user[0],))
-    jobs = cur.fetchall()
-    
-    if not jobs:
-        await update.message.reply_text("You haven't posted any jobs yet.")
-        return
-
-    # Format the list of jobs
-    message = "**Your Jobs Posts:** \n\n"
-    for job in jobs:
-        message += f"- **ID:** {job[0]}\n  **Title:** {job[5]}\n  **Description:** {job[6]}\n  **Approval status:** {job[12]}\n\n"
-
-    await update.message.reply_text(message, parse_mode="Markdown")
-
-
-async def my_companies(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """List all companies owned by the user."""
-    user = get_user(update, context)
-    
-    # Fetch companies
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM companies WHERE user_id = %s", (user[0],))
-    companies = cur.fetchall()
-    
-    keyboard = [
-        [InlineKeyboardButton("Add Company", callback_data='create_company')],
-    ]
-
-    if not companies:
-        await update.message.reply_text(
-            "You haven't created any companies yet.",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-        return
-
-    # Format the list of companies
-    message = "**Your Companies:** \n\n"
-    for company in companies:
-        message += f"- **ID:** {company[0]}\n  **Name:** {company[4]}\n  **Description:** {company[7]}\n  **Approval status:** {company[8]}\n\n"
-
-    await update.message.reply_text(
-        text=message, 
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode="Markdown"
-    )
-
-
-async def my_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = get_user(update, context)
-    
-    await update.message.reply_text(
-        text=f"<b>My Profile</b> \n\n"
-            f"<b>👤 \tName</b>: \t{user[3]} \n\n"
-            f"<b>👤 \tUsername</b>: \t{user[4]} \n\n"
-            f"<b>👤 \tGender</b>: \t{user[5]} \n\n"
-            f"<b>🎂 \tDate of Birth</b>: \t{user[6]} \n\n"
-            f"<b>🌐 \tCountry</b>: \t{user[9]} \n\n"
-            f"<b>🏙️ \tCity</b>: \t{user[10]} \n\n"
-            f"<b>📧 \tEmail</b>: \t{user[7]} \n\n"
-            f"<b>📞 \tPhone</b>: \t{user[8]} \n\n",
-        parse_mode='HTML'
-    )
-    return
-
-
-# TODO: postponed
-async def job_notifications(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Job Notifications")
-
-
-async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        text=f"<b>Help</b>\n\n"
-            "<b>Post a Job</b> - find the right candidates for you \n\n"
-            "<b>My Job posts</b> - view & manage your job posts \n\n"
-            "<b>My Companies</b> - add & manage your companies \n\n"
-            "<b>Notifications</b> - customize notifications you wanna receive \n\n"
-            "<b>My Profile</b> - manage your profile \n\n"
-            "<b>Help</b> - show help message \n\n",
-        parse_mode="HTML",
-    )
-    return
 
 
 # Onboarding
@@ -1181,6 +1183,20 @@ def is_valid_email(email):
     # regex pattern for validating an email
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return bool(re.match(pattern, email))
+
+
+def fetch_companies(user_id):
+    cur = conn.cursor()
+    cur.execute("SELECT company_id, name FROM companies WHERE user_id = %s", (user_id,))
+    companies = cur.fetchall()
+    return companies
+
+
+def fetch_categories():
+    cur = conn.cursor()
+    cur.execute("SELECT category_id, name FROM categories")
+    categories = cur.fetchall()
+    return categories
 
 
 async def notify_group_on_registration(update: Update, context: ContextTypes.DEFAULT_TYPE, user_data, topic_id=GROUP_TOPIC_New_Employer_Registration_ID):
