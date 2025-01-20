@@ -32,31 +32,46 @@ CREATE TABLE users (
   deleted_at TIMESTAMP
 );
 
-INSERT INTO users (telegram_id, role_id, name, username, gender, dob, email, phone, country, city, education, experience, cv, skills, portfolios, subscribed_alerts, preferences)
-VALUES (123456789, 1, 'John Doe', 'johndoe', 'Male', '1990-01-01', 'johndoe@example.com', '+1234567890', 'USA', 'New York', 'Bachelor', '5 years', 'cv.pdf', '["Java", "Python"]', '["portfolio1.pdf", "portfolio2.pdf"]', '["alert1", "alert2"]', '{"notifications": true, "email": true, "sms": false}');
+INSERT INTO users (telegram_id, role_id, name, username, gender, dob, email, phone, country, city, education, experience, cv, skills, portfolios, subscribed_alerts, preferences)VALUES (123456789, 1, 'John Doe', 'johndoe', 'Male', '1990-01-01', 'johndoe@example.com', '+1234567890', 'USA', 'New York', 'Bachelor', '5 years', 'cv.pdf', '["Java", "Python"]', '["portfolio1.pdf", "portfolio2.pdf"]', '["alert1", "alert2"]', '{"notifications": true, "email": true, "sms": false}');
+INSERT INTO users (telegram_id, role_id, name, username, gender, dob, email, phone, country, city, education, experience, cv, skills, portfolios, subscribed_alerts, preferences)VALUES (987654321, 2, 'Jane Smith', 'janesmith', 'Female', '1995-05-15', 'janesmith@example.com', '+9876543210', 'Canada', 'Toronto', 'Master', '3 years', 'cv.pdf', '["JavaScript", "React"]', '["portfolio3.pdf", "portfolio4.pdf"]', '["alert3", "alert4"]', '{"notifications": false, "email": true, "sms": true}');
+INSERT INTO users (telegram_id, role_id, name, username, gender, dob, email, phone, country, city, education, experience, cv, skills, portfolios, subscribed_alerts, preferences)VALUES (111111111, 3, 'Bob Johnson', 'bobjohnson', 'Male', '1985-12-10', 'bobjohnson@example.com', '+1111111111', 'UK', 'London', 'PhD', '10 years', 'cv.pdf', '["C++", "Ruby"]', '["portfolio5.pdf", "portfolio6.pdf"]', '["alert5", "alert6"]', '{"notifications": true, "email": false, "sms": true}');
+INSERT INTO users (telegram_id, role_id, name, username, gender, dob, email, phone, country, city, education, experience, cv, skills, portfolios, subscribed_alerts, preferences)VALUES (222222222, 1, 'Alice Brown', 'alicebrown', 'Female', '1992-07-20', 'alicebrown@example.com', '+2222222222', 'Australia', 'Sydney', 'Bachelor', '2 years', 'cv.pdf', '["HTML", "CSS"]', '["portfolio7.pdf", "portfolio8.pdf"]', '["alert7", "alert8"]', '{"notifications": true, "email": true, "sms": false}');
+INSERT INTO users (telegram_id, role_id, name, username, gender, dob, email, phone, country, city, education, experience, cv, skills, portfolios, subscribed_alerts, preferences)VALUES (333333333, 2, 'Mike Wilson', 'mikewilson', 'Male', '1988-03-05', 'mikewilson@example.com', '+3333333333', 'Germany', 'Berlin', 'Master', '7 years', 'cv.pdf', '["PHP", "MySQL"]', '["portfolio9.pdf", "portfolio10.pdf"]', '["alert9", "alert10"]', '{"notifications": false, "email": true, "sms": true}');
+INSERT INTO users (telegram_id, role_id, name, username, gender, dob, email, phone, country, city, education, experience, cv, skills, portfolios, subscribed_alerts, preferences)VALUES (444444444, 3, 'Sarah Lee', 'sarahlee', 'Female', '1997-11-30', 'sarahlee@example.com', '+4444444444', 'France', 'Paris', 'Bachelor', '1 year', 'cv.pdf', '["Python", "Django"]', '["portfolio11.pdf", "portfolio12.pdf"]', '["alert11", "alert12"]', '{"notifications": true, "email": false, "sms": true}');
+INSERT INTO users (telegram_id, role_id, name, username, gender, dob, email, phone, country, city, education, experience, cv, skills, portfolios, subscribed_alerts, preferences)VALUES (555555555, 1, 'David Kim', 'davidkim', 'Male', '1993-09-15', 'davidkim@example.com', '+5555555555', 'Japan', 'Tokyo', 'Master', '4 years', 'cv.pdf', '["JavaScript", "React"]', '["portfolio13.pdf", "portfolio14.pdf"]', '["alert13", "alert14"]', '{"notifications": true, "email": true, "sms": false}');
+INSERT INTO users (telegram_id, role_id, name, username, gender, dob, email, phone, country, city, education, experience, cv, skills, portfolios, subscribed_alerts, preferences)VALUES (666666666, 2, 'Emily Chen', 'emilychen', 'Female', '1998-06-25', 'emilychen@example.com', '+6666666666', 'China', 'Shanghai', 'Bachelor', '2 years', 'cv.pdf', '["Java", "Spring"]', '["portfolio15.pdf", "portfolio16.pdf"]', '["alert15", "alert16"]', '{"notifications": false, "email": true, "sms": true}');
+INSERT INTO users (telegram_id, role_id, name, username, gender, dob, email, phone, country, city, education, experience, cv, skills, portfolios, subscribed_alerts, preferences)VALUES (777777777, 3, 'Michael Davis', 'michaeldavis', 'Male', '1987-04-10', 'michaeldavis@example.com', '+7777777777', 'Brazil', 'Rio de Janeiro', 'PhD', '8 years', 'cv.pdf', '["C#", "ASP.NET"]', '["portfolio17.pdf", "portfolio18.pdf"]', '["alert17", "alert18"]', '{"notifications": true, "email": false, "sms": true}');
+INSERT INTO users (telegram_id, role_id, name, username, gender, dob, email, phone, country, city, education, experience, cv, skills, portfolios, subscribed_alerts, preferences)VALUES (888888888, 1, 'Sophia Martinez', 'sophiamartinez', 'Female', '1994-12-20', 'sophiamartinez@example.com', '+8888888888', 'Mexico', 'Mexico City', 'Master', '5 years', 'cv.pdf', '["Swift", "iOS"]', '["portfolio19.pdf", "portfolio20.pdf"]', '["alert19", "alert20"]', '{"notifications": true, "email": true, "sms": false}');
 
 
 
 CREATE TABLE companies (
   company_id SERIAL PRIMARY KEY,
   user_id INT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  type VARCHAR NOT NULL,
+  startup VARCHAR,
   name TEXT NOT NULL,
+  trade_license TEXT,
+  employer_photo TEXT,
   description TEXT,
   status VARCHAR CHECK (status IN ('pending', 'approved', 'rejected')) DEFAULT 'pending',
   verified BOOLEAN DEFAULT FALSE,
+  created_by VARCHAR,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP,
   deleted_at TIMESTAMP
 );
 
-INSERT INTO companies (user_id, name, description)
-VALUES (1, 'ABC Company', 'We are a leading company in the industry.');
-INSERT INTO companies (user_id, name, description)
-VALUES (1, 'XYZ Corporation', 'We are a leading company in the industry.');
-INSERT INTO companies (user_id, name, description)
-VALUES (1, '123 Industries', 'We are a leading company in the industry.');
-INSERT INTO companies (user_id, name, description)
-VALUES (1, '456 Enterprises', 'We are a leading company in the industry.');
+INSERT INTO companies (user_id, type, startup, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (1, 'Startup', 'Yes', 'ABC Company', '1234567890', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'John Doe');
+INSERT INTO companies (user_id, type, startup, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (2, 'Startup', 'Yes', 'XYZ Corporation', '9876543210', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'Jane Smith');
+INSERT INTO companies (user_id, type, startup, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (3, 'Startup', 'Yes', '123 Industries', '5678901234', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'John Doe');
+INSERT INTO companies (user_id, type, startup, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (4, 'Startup', 'Yes', '456 Enterprises', '9012345678', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'Jane Smith');
+INSERT INTO companies (user_id, type, startup, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (5, 'Startup', 'Yes', '789 Solutions', '3456789012', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'John Doe');
+INSERT INTO companies (user_id, type, startup, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (6, 'Startup', 'Yes', '012 Tech', '7890123456', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'Jane Smith');
+INSERT INTO companies (user_id, type, startup, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (7, 'Startup', 'Yes', '345 Innovations', '1234567890', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'John Doe');
+INSERT INTO companies (user_id, type, startup, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (8, 'Startup', 'Yes', '678 Ventures', '9876543210', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'Jane Smith');
+INSERT INTO companies (user_id, type, startup, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (9, 'Startup', 'Yes', '901 Solutions', '5678901234', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'John Doe');
+INSERT INTO companies (user_id, type, startup, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (10, 'Startup', 'Yes', '234 Tech', '9012345678', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'Jane Smith');
 
 
 
@@ -70,14 +85,47 @@ CREATE TABLE categories (
   deleted_at TIMESTAMP
 );
 
-INSERT INTO categories (parent_id, name, description)
-VALUES (NULL, 'Technology', 'Technology category');
-INSERT INTO categories (parent_id, name, description)
-VALUES (1, 'Data Science', 'Data science category');
-INSERT INTO categories (parent_id, name, description)
-VALUES (1, 'AI', 'Artificial intelligence category');
-INSERT INTO categories (parent_id, name, description)
-VALUES (1, 'App Development', 'App development category');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Administrative', 'Jobs involving office management, clerical work, and administrative support.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Accounting', 'Positions in bookkeeping, auditing, and financial reporting.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Business Development', 'Jobs focused on identifying growth opportunities and building client relationships.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Consulting', 'Positions providing expert advice in various fields such as management, IT, and finance.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Customer Support', 'Jobs that involve assisting customers with inquiries and resolving issues.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Data Entry', 'Positions focused on inputting and managing data in various systems.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Graphic Design', 'Jobs involving visual communication and design for print and digital media.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'IT Support', 'Positions providing technical assistance and support for computer systems and networks.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Legal Assistant', 'Jobs supporting lawyers with research, documentation, and case management.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Network Administration', 'Positions focused on managing and maintaining computer networks.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Public Relations', 'Jobs managing communication between organizations and the public.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Quality Assurance', 'Positions focused on ensuring products and services meet quality standards.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Social Media Management', 'Jobs involving the management and strategy of social media platforms.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Technical Support', 'Positions providing assistance with technical products and services.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Training and Development', 'Jobs focused on employee training, skill development, and organizational learning.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Web Development', 'Positions involving the design and development of websites and web applications.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Event Planning', 'Jobs focused on organizing and coordinating events, conferences, and meetings.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Insurance Sales', 'Positions involving selling insurance products and managing client relationships.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Manufacturing Operations', 'Jobs related to overseeing production processes and managing manufacturing teams.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Medical Billing and Coding', 'Positions focused on processing healthcare claims and managing patient records.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Real Estate Sales', 'Jobs involving the buying, selling, and leasing of properties.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Retail Management', 'Positions overseeing retail operations, staff management, and customer service.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Sales Management', 'Jobs focused on leading sales teams and developing sales strategies.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Supply Chain Logistics', 'Positions managing the flow of goods and services from suppliers to customers.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Technical Writing', 'Jobs involving creating manuals, guides, and documentation for technical products.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'User Experience (UX) Design', 'Positions focused on enhancing user satisfaction through improved usability and accessibility.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Virtual Assistance', 'Jobs providing administrative support remotely to businesses and entrepreneurs.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Warehouse Operations', 'Positions related to inventory management, shipping, and receiving in warehouses.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Content Management', 'Jobs involving the creation, editing, and management of digital content.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Health and Safety', 'Positions focused on ensuring workplace safety and compliance with regulations.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Product Management', 'Jobs overseeing the development and marketing of products throughout their lifecycle.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Translation and Interpretation', 'Positions providing language translation and interpretation services.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Research and Development', 'Positions focused on innovation, product development, and scientific research.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Project Management', 'Jobs that involve planning, executing, and closing projects across various industries.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Information Security', 'Positions dedicated to protecting information systems and data from cyber threats.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Data Science', 'Careers involving data analysis, machine learning, and statistical modeling.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Telecommunications', 'Jobs in the field of communication technologies and network management.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Non-Profit', 'Positions in organizations focused on social causes and community service.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Government', 'Jobs in federal, state, and local government agencies.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Environmental Services', 'Positions related to environmental protection, sustainability, and conservation.');
+INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Supply Chain Management', 'Jobs focused on logistics, procurement, and inventory management.');
 
 
 
@@ -86,14 +134,23 @@ CREATE TABLE jobs (
   company_id INT NOT NULL REFERENCES companies(company_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
   user_id INT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
   category_id INT NOT NULL REFERENCES categories(category_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-  type VARCHAR,
-  title TEXT NOT NULL,
-  description TEXT,
-  requirements TEXT,
-  city VARCHAR,
-  country VARCHAR,
-  salary VARCHAR,
-  deadline DATE,
+  job_title VARCHAR NOT NULL,
+  job_type VARCHAR NOT NULL,
+  job_site VARCHAR NOT NULL,
+  job_sector VARCHAR NOT NULL,
+  education_qualification VARCHAR NOT NULL,
+  experience_level VARCHAR NOT NULL,
+  gender_preference VARCHAR,
+  job_deadline DATE,
+  vacancies VARCHAR,
+  job_description TEXT,
+  job_requirements TEXT,
+  job_city VARCHAR,
+  job_country VARCHAR,
+  salary_type VARCHAR,
+  salary_amount NUMERIC CHECK (salary >= 0) DEFAULT 0,
+  salary_currency VARCHAR,
+  skills_expertise TEXT[],
   status VARCHAR CHECK (status IN ('pending', 'approved', 'rejected')) DEFAULT 'pending',
   promoted BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -101,18 +158,26 @@ CREATE TABLE jobs (
   deleted_at TIMESTAMP
 );
 
-INSERT INTO jobs (company_id, user_id, category_id, type, title, description, requirements, city, country, salary, deadline, promoted)
-VALUES (1, 1, 1, 'Remote', 'Data Scientist', 'We are looking for a data scientist to join our team.', 'Requirements for the data scientist:', 'Remote', 'Anywhere', '$100,000', '2024-12-31', true);
-INSERT INTO jobs (company_id, user_id, category_id, type, title, description, requirements, city, country, salary, deadline, promoted)
-VALUES (2, 1, 2, 'On-site - Permanent', 'Machine Learning Engineer', 'We are looking for a machine learning engineer to join our team.', 'Requirements for the machine learning engineer:', 'Hawassa', 'Ethiopia', '$80,000', '2024-12-31', false);
-INSERT INTO jobs (company_id, user_id, category_id, type, title, description, requirements, city, country, salary, deadline, promoted)
-VALUES (3, 1, 3, 'Remote - Full-time', 'Software Engineer', 'We are looking for a software engineer to join our team.', 'Requirements for the software engineer:', 'Remote', 'Anywhere', '$90,000', '2024-12-31', true);
-INSERT INTO jobs (company_id, user_id, category_id, type, title, description, requirements, city, country, salary, deadline, promoted)
-VALUES (3, 1, 4, 'On-site - Part-time', 'Full Stack Developer', 'We are looking for a full stack developer to join our team.', 'Requirements for the full stack developer:', 'Addis Ababa', 'Ethiopia', '$110,000', '2024-12-31', false);
-INSERT INTO jobs (company_id, user_id, category_id, type, title, description, requirements, city, country, salary, deadline, promoted)
-VALUES (4, 1, 2, 'Remote - Contract', 'Data Analyst', 'We are looking for a data analyst to join our team.', 'Requirements for the data analyst:', 'Remote', 'Anywhere', '$70,000', '2024-12-31', true);
-INSERT INTO jobs (company_id, user_id, category_id, type, title, description, requirements, city, country, salary, deadline, promoted)
-VALUES (4, 1, 2, 'On-site - Full-time', 'DevOps Engineer', 'We are looking for a DevOps engineer to join our team.', 'Requirements for the DevOps engineer:', 'Addis Ababa', 'Ethiopia', '$120,000', '2024-12-31', false);
+INSERT INTO jobs (company_id, user_id, category_id, job_title, job_type, job_site, job_sector, education_qualification, experience_level, gender_preference, job_deadline, vacancies, job_description, job_requirements, job_city, job_country, salary_type, salary_amount, salary_currency, skills_expertise, status, promoted)
+VALUES (1, 1, 1, 'Data Scientist', 'Full-time', 'LinkedIn', 'Technology', 'Bachelor', 'Mid-level', 'Male', '2024-12-31', '10', 'We are looking for a data scientist to join our team.', 'Requirements for the data scientist:', 'New York', 'USA', 'Hourly', 50, 'USD', '["Python", "Machine Learning"]', 'approved', true);
+INSERT INTO jobs (company_id, user_id, category_id, job_title, job_type, job_site, job_sector, education_qualification, experience_level, gender_preference, job_deadline, vacancies, job_description, job_requirements, job_city, job_country, salary_type, salary_amount, salary_currency, skills_expertise, status, promoted)
+VALUES (2, 2, 2, 'Software Engineer', 'Full-time', 'LinkedIn', 'Technology', 'Bachelor', 'Mid-level', 'Male', '2024-12-31', '10', 'We are looking for a software engineer to join our team.', 'Requirements for the software engineer:', 'New York', 'USA', 'Hourly', 50, 'USD', '["Python", "Machine Learning"]', 'approved', true);
+INSERT INTO jobs (company_id, user_id, category_id, job_title, job_type, job_site, job_sector, education_qualification, experience_level, gender_preference, job_deadline, vacancies, job_description, job_requirements, job_city, job_country, salary_type, salary_amount, salary_currency, skills_expertise, status, promoted)
+VALUES (3, 3, 3, 'UI/UX Designer', 'Full-time', 'LinkedIn', 'Technology', 'Bachelor', 'Mid-level', 'Male', '2024-12-31', '10', 'We are looking for a UI/UX designer to join our team.', 'Requirements for the UI/UX designer:', 'New York', 'USA', 'Hourly', 50, 'USD', '["Python", "Machine Learning"]', 'approved', true);
+INSERT INTO jobs (company_id, user_id, category_id, job_title, job_type, job_site, job_sector, education_qualification, experience_level, gender_preference, job_deadline, vacancies, job_description, job_requirements, job_city, job_country, salary_type, salary_amount, salary_currency, skills_expertise, status, promoted)
+VALUES (4, 4, 4, 'Marketing Manager', 'Full-time', 'LinkedIn', 'Technology', 'Bachelor', 'Mid-level', 'Male', '2024-12-31', '10', 'We are looking for a marketing manager to join our team.', 'Requirements for the marketing manager:', 'New York', 'USA', 'Hourly', 50, 'USD', '["Python", "Machine Learning"]', 'approved', true);
+INSERT INTO jobs (company_id, user_id, category_id, job_title, job_type, job_site, job_sector, education_qualification, experience_level, gender_preference, job_deadline, vacancies, job_description, job_requirements, job_city, job_country, salary_type, salary_amount, salary_currency, skills_expertise, status, promoted)
+VALUES (5, 5, 5, 'Product Manager', 'Full-time', 'LinkedIn', 'Technology', 'Bachelor', 'Mid-level', 'Male', '2024-12-31', '10', 'We are looking for a product manager to join our team.', 'Requirements for the product manager:', 'New York', 'USA', 'Hourly', 50, 'USD', '["Python", "Machine Learning"]', 'approved', true);
+INSERT INTO jobs (company_id, user_id, category_id, job_title, job_type, job_site, job_sector, education_qualification, experience_level, gender_preference, job_deadline, vacancies, job_description, job_requirements, job_city, job_country, salary_type, salary_amount, salary_currency, skills_expertise, status, promoted)
+VALUES (6, 6, 6, 'Data Analyst', 'Full-time', 'LinkedIn', 'Technology', 'Bachelor', 'Mid-level', 'Male', '2024-12-31', '10', 'We are looking for a data analyst to join our team.', 'Requirements for the data analyst:', 'New York', 'USA', 'Hourly', 50, 'USD', '["Python", "Machine Learning"]', 'approved', true);
+INSERT INTO jobs (company_id, user_id, category_id, job_title, job_type, job_site, job_sector, education_qualification, experience_level, gender_preference, job_deadline, vacancies, job_description, job_requirements, job_city, job_country, salary_type, salary_amount, salary_currency, skills_expertise, status, promoted)
+VALUES (7, 7, 7, 'Sales Manager', 'Full-time', 'LinkedIn', 'Technology', 'Bachelor', 'Mid-level', 'Male', '2024-12-31', '10', 'We are looking for a sales manager to join our team.', 'Requirements for the sales manager:', 'New York', 'USA', 'Hourly', 50, 'USD', '["Python", "Machine Learning"]', 'approved', true);
+INSERT INTO jobs (company_id, user_id, category_id, job_title, job_type, job_site, job_sector, education_qualification, experience_level, gender_preference, job_deadline, vacancies, job_description, job_requirements, job_city, job_country, salary_type, salary_amount, salary_currency, skills_expertise, status, promoted)
+VALUES (8, 8, 8, 'Customer Support', 'Full-time', 'LinkedIn', 'Technology', 'Bachelor', 'Mid-level', 'Male', '2024-12-31', '10', 'We are looking for a customer support to join our team.', 'Requirements for the customer support:', 'New York', 'USA', 'Hourly', 50, 'USD', '["Python", "Machine Learning"]', 'approved', true);
+INSERT INTO jobs (company_id, user_id, category_id, job_title, job_type, job_site, job_sector, education_qualification, experience_level, gender_preference, job_deadline, vacancies, job_description, job_requirements, job_city, job_country, salary_type, salary_amount, salary_currency, skills_expertise, status, promoted)
+VALUES (9, 9, 9, 'Customer Support', 'Full-time', 'LinkedIn', 'Technology', 'Bachelor', 'Mid-level', 'Male', '2024-12-31', '10', 'We are looking for a customer support to join our team.', 'Requirements for the customer support:', 'New York', 'USA', 'Hourly', 50, 'USD', '["Python", "Machine Learning"]', 'approved', true);
+INSERT INTO jobs (company_id, user_id, category_id, job_title, job_type, job_site, job_sector, education_qualification, experience_level, gender_preference, job_deadline, vacancies, job_description, job_requirements, job_city, job_country, salary_type, salary_amount, salary_currency, skills_expertise, status, promoted)
+VALUES (10, 10, 10, 'Customer Support', 'Full-time', 'LinkedIn', 'Technology', 'Bachelor', 'Mid-level', 'Male', '2024-12-31', '10', 'We are looking for a customer support to join our team.', 'Requirements for the customer support:', 'New York', 'USA', 'Hourly', 50, 'USD', '["Python", "Machine Learning"]', 'approved', true);
 
 
 
@@ -124,7 +189,7 @@ CREATE TABLE applications (
   cv VARCHAR,
   portfolio JSON,
   note TEXT,
-  status VARCHAR CHECK (status IN ('applied', 'shortlisted', 'rejected')) DEFAULT 'applied',
+  status VARCHAR CHECK (status IN ('applied', 'seen', 'shortlisted', 'rejected')) DEFAULT 'applied',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP,
   deleted_at TIMESTAMP
