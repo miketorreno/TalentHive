@@ -49,7 +49,7 @@ CREATE TABLE companies (
   company_id SERIAL PRIMARY KEY,
   user_id INT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
   type VARCHAR NOT NULL,
-  startup VARCHAR,
+  startup_type VARCHAR,
   name TEXT NOT NULL,
   trade_license TEXT,
   employer_photo TEXT,
@@ -62,16 +62,16 @@ CREATE TABLE companies (
   deleted_at TIMESTAMP
 );
 
-INSERT INTO companies (user_id, type, startup, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (1, 'Startup', 'Yes', 'ABC Company', '1234567890', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'John Doe');
-INSERT INTO companies (user_id, type, startup, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (2, 'Startup', 'Yes', 'XYZ Corporation', '9876543210', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'Jane Smith');
-INSERT INTO companies (user_id, type, startup, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (3, 'Startup', 'Yes', '123 Industries', '5678901234', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'John Doe');
-INSERT INTO companies (user_id, type, startup, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (4, 'Startup', 'Yes', '456 Enterprises', '9012345678', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'Jane Smith');
-INSERT INTO companies (user_id, type, startup, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (5, 'Startup', 'Yes', '789 Solutions', '3456789012', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'John Doe');
-INSERT INTO companies (user_id, type, startup, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (6, 'Startup', 'Yes', '012 Tech', '7890123456', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'Jane Smith');
-INSERT INTO companies (user_id, type, startup, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (7, 'Startup', 'Yes', '345 Innovations', '1234567890', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'John Doe');
-INSERT INTO companies (user_id, type, startup, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (8, 'Startup', 'Yes', '678 Ventures', '9876543210', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'Jane Smith');
-INSERT INTO companies (user_id, type, startup, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (9, 'Startup', 'Yes', '901 Solutions', '5678901234', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'John Doe');
-INSERT INTO companies (user_id, type, startup, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (10, 'Startup', 'Yes', '234 Tech', '9012345678', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'Jane Smith');
+INSERT INTO companies (user_id, type, startup_type, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (1, 'Startup', 'Yes', 'ABC Company', '1234567890', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'John Doe');
+INSERT INTO companies (user_id, type, startup_type, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (2, 'Startup', 'Yes', 'XYZ Corporation', '9876543210', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'Jane Smith');
+INSERT INTO companies (user_id, type, startup_type, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (3, 'Startup', 'Yes', '123 Industries', '5678901234', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'John Doe');
+INSERT INTO companies (user_id, type, startup_type, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (4, 'Startup', 'Yes', '456 Enterprises', '9012345678', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'Jane Smith');
+INSERT INTO companies (user_id, type, startup_type, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (5, 'Startup', 'Yes', '789 Solutions', '3456789012', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'John Doe');
+INSERT INTO companies (user_id, type, startup_type, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (6, 'Startup', 'Yes', '012 Tech', '7890123456', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'Jane Smith');
+INSERT INTO companies (user_id, type, startup_type, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (7, 'Startup', 'Yes', '345 Innovations', '1234567890', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'John Doe');
+INSERT INTO companies (user_id, type, startup_type, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (8, 'Startup', 'Yes', '678 Ventures', '9876543210', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'Jane Smith');
+INSERT INTO companies (user_id, type, startup_type, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (9, 'Startup', 'Yes', '901 Solutions', '5678901234', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'John Doe');
+INSERT INTO companies (user_id, type, startup_type, name, trade_license, employer_photo, description, status, verified, created_by) VALUES (10, 'Startup', 'Yes', '234 Tech', '9012345678', 'employer_photo.jpg', 'We are a leading company in the industry.', 'approved', TRUE, 'Jane Smith');
 
 
 

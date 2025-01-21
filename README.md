@@ -30,6 +30,7 @@ Telegram bot that allows recruiters to post jobs and job seekers to browse & app
 
 ## Fixes
 
+- [ ] Empty `context.user_data`, `user_data` & `data` variables after you're done with 'em
 - [ ] `conn.close()` research this stuff & close every connection
 - [ ] Change age to dob in the db (by subtracting it when saving & fetching it)
 - [ ] Add the ability to enter city name when registering, if it's not available in the list
