@@ -456,7 +456,7 @@ async def choose_field(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return EDIT_DOB
     elif choice == 'edit_country':
         keyboard = [
-            [InlineKeyboardButton("Ethiopia", callback_data='Ethiopia')],
+            [InlineKeyboardButton("Ethiopia", callback_data='Ethiopia')]
         ]
         
         await context.bot.send_message(
@@ -1241,7 +1241,7 @@ async def register_dob(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return REGISTER_DOB
 
         keyboard = [
-            [InlineKeyboardButton("Ethiopia", callback_data='Ethiopia')],
+            [InlineKeyboardButton("Ethiopia", callback_data='Ethiopia')]
         ]
         await update.message.reply_text(
             "Please select your country",
@@ -1290,7 +1290,7 @@ async def register_dob(update: Update, context: ContextTypes.DEFAULT_TYPE):
 #             return REGISTER_DOB
 
 #         keyboard = [
-#             [InlineKeyboardButton("Ethiopia", callback_data='Ethiopia')],
+#             [InlineKeyboardButton("Ethiopia", callback_data='Ethiopia')]
 #         ]
 #         await update.message.reply_text(
 #             "Please select your country",
