@@ -125,7 +125,6 @@ INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Telecommuni
 INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Non-Profit', 'Positions in organizations focused on social causes and community service.');
 INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Government', 'Jobs in federal, state, and local government agencies.');
 INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Environmental Services', 'Positions related to environmental protection, sustainability, and conservation.');
-INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Supply Chain Management', 'Jobs focused on logistics, procurement, and inventory management.');
 
 
 

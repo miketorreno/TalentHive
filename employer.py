@@ -115,6 +115,10 @@ async def my_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """List all jobs posted by the user."""
     user = get_user(update, context)
     
+    if not user:
+        await start(update, context)
+        return
+    
     # Fetch jobs
     cur = conn.cursor()
     cur.execute("SELECT * FROM jobs WHERE user_id = %s", (user[0],))
@@ -135,6 +139,10 @@ async def my_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def my_companies(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """List all companies owned by the user."""
     user = get_user(update, context)
+    
+    if not user:
+        await start(update, context)
+        return
     
     # Fetch companies
     cur = conn.cursor()
@@ -166,6 +174,10 @@ async def my_companies(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def my_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = get_user(update, context)
+    
+    if not user:
+        await start(update, context)
+        return
     
     await update.message.reply_text(
         text=f"<b>My Profile</b> \n\n"
@@ -215,7 +227,7 @@ async def create_company_start(update: Update, context: ContextTypes.DEFAULT_TYP
         ]
     
         await query.edit_message_text(
-            "<b>Let's create your company, \nPlease select the type of your company</b>",
+            "<b>Let's create your company, please select the type of your company</b>",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='HTML'
         )
@@ -344,7 +356,7 @@ async def trade_license(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         if not update.message.photo:
             await update.message.reply_text(
-                "<i>* Invalid format.</i>\n\n<b>Please upload your trade license</b>",
+                "<i>* invalid format.</i>\n\n<b>Please upload your trade license</b>",
                 parse_mode='HTML'
             )
             return TRADE_LICENSE
@@ -375,7 +387,7 @@ async def trade_license(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def unsupported_trade_license(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await update.message.reply_text(
-            "<i>* Invalid file type</i>\n\n<b>Please upload a PHOTO</b>",
+            "<i>* invalid file type</i>\n\n<b>Please upload a PHOTO</b>",
             parse_mode='HTML'
         )
         return TRADE_LICENSE
@@ -412,7 +424,7 @@ async def employer_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         if not update.message.photo:
             await update.message.reply_text(
-                "<i>* Invalid format.</i>\n\n<b>Please upload your ID photo</b>",
+                "<i>* invalid format.</i>\n\n<b>Please upload your ID photo</b>",
                 parse_mode='HTML'
             )
             return EMPLOYER_PHOTO
@@ -430,7 +442,7 @@ async def employer_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"<b>COMPANY INFO</b>\n\n"
             f"Company Name: {context.user_data["name"]}\n\n"
             # f"Company Type: {context.user_data["company_type"]}\n\n"
-            f"{'Type: ' + startup_type.capitalize() + 'Startup \n\n' if company_type == 'startup' else ''}"
+            f"{'Type: ' + startup_type.capitalize() + ' Startup \n\n' if company_type == 'startup' else ''}"
             f"{'Trade License Photo: \t✅ \n\n' if startup_type != 'unlicensed' else ''}"
             f"Employer Photo: \t✅\n\n"
         )
@@ -474,7 +486,7 @@ async def employer_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def unsupported_employer_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await update.message.reply_text(
-            "<i>* Invalid file type</i>\n\n<b>Please upload a PHOTO</b>",
+            "<i>* invalid file type</i>\n\n<b>Please upload a PHOTO</b>",
             parse_mode='HTML'
         )
         return EMPLOYER_PHOTO
@@ -514,7 +526,7 @@ async def company_auth_letter(update: Update, context: ContextTypes.DEFAULT_TYPE
                 f"<b>COMPANY INFO</b>\n\n"
                 f"Company Name: {context.user_data["name"]}\n\n"
                 # f"Company Type: {context.user_data["company_type"]}\n\n"
-                f"{'Type: ' + startup_type.capitalize() + 'Startup \n\n' if company_type == 'startup' else ''}"
+                f"{'Type: ' + startup_type.capitalize() + ' Startup \n\n' if company_type == 'startup' else ''}"
                 f"{'Trade License Photo: \t✅ \n\n' if startup_type != 'unlicensed' else ''}"
                 f"Employer Photo: \t✅\n\n"
                 f"{'Authorization Letter: \t✅' if auth_letter else ''}\n\n"
@@ -543,7 +555,7 @@ async def company_auth_letter(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def unsupported_auth_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await update.message.reply_text(
-            "<i>* Invalid file type</i>\n\n<b>Please upload a PDF or Word document</b>",
+            "<i>* invalid file type</i>\n\n<b>Please upload a PDF or Word document</b>",
             parse_mode='HTML'
         )
         return COMPANY_AUTH_LETTER
@@ -560,8 +572,13 @@ async def confirm_company(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         query = update.callback_query
         await query.answer()
-        user = get_user(update, context)
         data = context.user_data
+        
+        user = get_user(update, context)
+    
+        if not user:
+            await start(update, context)
+            return
         
         cur = conn.cursor()
         cur.execute(
@@ -589,13 +606,12 @@ async def confirm_company(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cancel_company(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.callback_query:
-        query = update.callback_query
-        await query.edit_message_text(
+        await update.callback_query.edit_message_text(
             "<b>Company creation canceled</b>",
             parse_mode='HTML'
         )
     else:
-        await query.edit_message_text(
+        await update.message.reply_text(
             "<b>Company creation canceled</b>",
             parse_mode='HTML'
         )
@@ -605,8 +621,7 @@ async def cancel_company(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cancel_company_creation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.callback_query:
-        query = update.callback_query
-        await query.edit_message_text(
+        await update.callback_query.edit_message_text(
             "<b>Company creation canceled</b>", 
             parse_mode='HTML'
         )
@@ -622,21 +637,27 @@ async def cancel_company_creation(update: Update, context: ContextTypes.DEFAULT_
 # Post job conversation
 async def post_job_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        # await update.message.reply_text("Let's post a new job.")
         user = get_user(update, context)
+    
+        if not user:
+            await start(update, context)
+            return
+        
         companies = fetch_companies(user[0])
         
         if not companies:
             await update.message.reply_text(
-                "No companies found. Please register a company first. \n\n<i>Go to My Companies > Add Company</i>",
+                "<i>* No companies found. Please register a company first</i> \n\n<b>Go to My Companies > Add Company</b>",
                 parse_mode='HTML'
             )
             return ConversationHandler.END
 
-        buttons = [[InlineKeyboardButton(company[4], callback_data=f"company_{company[0]}")] for company in companies]
+        buttons = [InlineKeyboardButton(company[4], callback_data=f"company_{company[0]}") for company in companies]
+        keyboard = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]  # Group buttons into rows
+        
         await update.message.reply_text(
-            "Let's post a new job. \n\nPlease select company:",
-            reply_markup=InlineKeyboardMarkup(buttons),
+            "<b>Let's post a new job, please select company</b>",
+            reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='HTML'
         )
         return SELECT_COMPANY
@@ -653,14 +674,12 @@ async def select_company(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
 
         if not query.data.startswith("company_"):
-            await query.message.reply_text("Invalid selection.")
+            await query.message.reply_text("<i>* invalid selection</i>", parse_mode='HTML')
             return ConversationHandler.END
 
-        # company_id = query.data.split("_")[1]
         context.user_data["company_id"] = query.data.split("_")[1]
-        await query.edit_message_text("Company selected")
-        await query.message.reply_text(
-            "Please enter job title",
+        await query.edit_message_text(
+            "<b>Please enter job title</b>",
             parse_mode='HTML'
         )
         return JOB_TITLE
@@ -675,9 +694,10 @@ async def job_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         title = update.message.text.strip()
 
-        if not title.isalnum():
+        # if not title.is_isalnum():
+        if not is_isalnum_w_space(title):
             await update.message.reply_text(
-                "<i>* Company job title should only contain alphabets and numbers.</i> \n\nPlease enter job title",
+                "<i>* Company job title should only contain alphabets and numbers.</i> \n\n<b>Please enter job title</b>",
                 parse_mode='HTML'
             )
             return JOB_TITLE
@@ -685,12 +705,12 @@ async def job_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["job_title"] = title
         keyboard = [
             [
-                InlineKeyboardButton("Onsite", callback_data="on-site"), 
+                InlineKeyboardButton("On-site", callback_data="on-site"), 
                 InlineKeyboardButton("Remote", callback_data="remote")
             ]
         ]
         await update.message.reply_text(
-            "Please choose job site:",
+            "<b>Please select job site</b>",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='HTML'
         )
@@ -708,7 +728,6 @@ async def job_site(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
         
         context.user_data["job_site"] = query.data
-        await query.edit_message_text("Job site selected")
         keyboard = [
             [
                 InlineKeyboardButton("Full-time", callback_data="Full-time"),
@@ -722,16 +741,16 @@ async def job_site(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 InlineKeyboardButton("Intern (Paid)", callback_data="Intern (Paid)"),
                 InlineKeyboardButton("Intern (Paid)", callback_data="Intern (Paid)")
             ],
-            InlineKeyboardButton("Volunteer", callback_data="Volunteer")
+            [InlineKeyboardButton("Volunteer", callback_data="Volunteer")]
         ]
-        await query.message.reply_text(
-            "Please select job type:",
+        await query.edit_message_text(
+            "<b>Please select job type</b>",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='HTML'
         )
         return JOB_TYPE
     except Exception as e:
-        await update.message.reply_text("An error occurred while selecting job site. Please try again.")
+        await query.edit_message_text("An error occurred while selecting job site. Please try again.")
         # Optionally log the error for debugging
         print(f"Error in job_site: {e}")
         return ConversationHandler.END
@@ -743,17 +762,28 @@ async def job_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
         
         context.user_data["job_type"] = query.data
-        await query.edit_message_text("Job type selected")
         categories = fetch_categories()
-        buttons = [[InlineKeyboardButton(name, callback_data=f"{name}_{category_id}")] for category_id, name in categories]
+        buttons = [InlineKeyboardButton(name, callback_data=f"{name}_{category_id}") for category_id, name in categories]
         
-        await query.message.reply_text(
-            "Choose a job sector:",
-            reply_markup=InlineKeyboardMarkup(buttons),
+        keyboard = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]  # Group buttons into rows
+        
+        # def get_all_cities():
+        #     buttons = [InlineKeyboardButton(city, callback_data=f"{city}") for city in CITIES]
+
+        #     # Organize buttons into 2-column rows
+        #     keyboard = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]  # Group buttons into rows
+        #     keyboard.append([InlineKeyboardButton("Others", callback_data="Others")]),
+
+        #     return InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            "<b>Choose a job sector</b>",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
         )
         return JOB_SECTOR
     except Exception as e:
-        await update.message.reply_text("An error occurred while selecting job type. Please try again.")
+        await query.edit_message_text("An error occurred while selecting job type. Please try again.")
         # Optionally log the error for debugging
         print(f"Error in job_type: {e}")
         return ConversationHandler.END
@@ -766,7 +796,6 @@ async def job_sector(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
         context.user_data["category_id"] = query.data.split("_")[1]
         context.user_data["job_sector"] = query.data.split("_")[0]
-        await query.edit_message_text("Job sector selected")
         
         keyboard = [
             [
@@ -786,14 +815,14 @@ async def job_sector(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 InlineKeyboardButton("Not Required", callback_data="Not Required")
             ]
         ]
-        await query.message.reply_text(
-            "Educational Qualification:",
+        await query.edit_message_text(
+            "<b>Educational Qualification</b>",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='HTML'
         )
         return EDUCATION_QUALIFICATION
     except Exception as e:
-        await update.message.reply_text("An error occurred while selecting job sector. Please try again.")
+        await query.edit_message_text("An error occurred while selecting job sector. Please try again.")
         # Optionally log the error for debugging
         print(f"Error in job_sector: {e}")
         return ConversationHandler.END
@@ -805,7 +834,6 @@ async def education_qualification(update: Update, context: ContextTypes.DEFAULT_
         await query.answer()
     
         context.user_data["education"] = query.data
-        await query.edit_message_text("Educational qualification selected")
         
         keyboard = [
             [
@@ -821,14 +849,14 @@ async def education_qualification(update: Update, context: ContextTypes.DEFAULT_
                 InlineKeyboardButton("Not Required", callback_data="Not Required")
             ]
         ]
-        await query.message.reply_text(
-            "Experience Level:",
+        await query.edit_message_text(
+            "<b>Experience Level</b>",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='HTML'
         )
         return EXPERIENCE_LEVEL
     except Exception as e:
-        await update.message.reply_text("An error occurred while selecting educational qualification. Please try again.")
+        await query.edit_message_text("An error occurred while selecting educational qualification. Please try again.")
         # Optionally log the error for debugging
         print(f"Error in education_qualification: {e}")
         return ConversationHandler.END
@@ -840,23 +868,22 @@ async def experience_level(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
     
         context.user_data["experience"] = query.data
-        await query.edit_message_text("Educational qualification selected")
         
         keyboard = [
             [
                 InlineKeyboardButton("Male", callback_data="Male"),
                 InlineKeyboardButton("Female", callback_data="Female")
             ],
-            InlineKeyboardButton("Both", callback_data="Both")
+            [InlineKeyboardButton("Both", callback_data="Both")]
         ]
-        await query.message.reply_text(
-            "Gender Preferred:",
+        await query.edit_message_text(
+            "<b>Gender Preferred</b>",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='HTML'
         )
         return GENDER_PREFERENCE
     except Exception as e:
-        await update.message.reply_text("An error occurred while selecting experience level. Please try again.")
+        await query.edit_message_text("An error occurred while selecting experience level. Please try again.")
         # Optionally log the error for debugging
         print(f"Error in experience_level: {e}")
         return ConversationHandler.END
@@ -868,15 +895,14 @@ async def gender_preference(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
     
         context.user_data["gender"] = query.data
-        await query.edit_message_text("Gender selected")
         
-        await query.message.reply_text(
-            "Please enter job deadline in YYYY-MM-DD format",
+        await query.edit_message_text(
+            "<b>Please enter job deadline in YYYY-MM-DD format</b>",
             parse_mode='HTML'
         )
         return JOB_DEADLINE
     except Exception as e:
-        await update.message.reply_text("An error occurred while selecting gender. Please try again.")
+        await query.edit_message_text("An error occurred while selecting gender. Please try again.")
         # Optionally log the error for debugging
         print(f"Error in gender_preference: {e}")
         return ConversationHandler.END
@@ -888,9 +914,16 @@ async def job_deadline(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # TODO: implement data checker
         
+        if not is_valid_date_format(deadline):
+            await update.message.reply_text(
+                "<i>* invalid date format</i>\n\n<b>Please enter job deadline in YYYY-MM-DD format</b>",
+                parse_mode='HTML'
+            )
+            return JOB_DEADLINE
+        
         context.user_data['deadline'] = deadline
         await update.message.reply_text(
-            "Please enter number of vacancies",
+            "<b>Please enter number of vacancies</b>",
             parse_mode='HTML'
         )
         return VACANCIES
@@ -906,14 +939,14 @@ async def vacancies(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if not vacancies.isdigit() or len(vacancies) < 1:
             await update.message.reply_text(
-                "<i>* Invalid value</i>\n\nPlease enter number of vacancies",
+                "<i>* invalid value</i>\n\n<b>Please enter number of vacancies</b>",
                 parse_mode='HTML'
             )
             return VACANCIES
         
         context.user_data['vacancies'] = vacancies
         await update.message.reply_text(
-            "Please write the job description",
+            "<b>Please write the job description</b>",
             parse_mode='HTML'
         )
         return JOB_DESCRIPTION
@@ -930,11 +963,10 @@ async def job_description(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # TODO: implement description checker
         
         context.user_data['description'] = job_description
-        keyboard = [
-            InlineKeyboardButton("Ethiopia", callback_data='Ethiopia')
-        ]
+        keyboard = [[InlineKeyboardButton("Ethiopia", callback_data='Ethiopia')]]
+        
         await update.message.reply_text(
-            "Please select job location",
+            "<b>Please select job location</b>",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='HTML'
         )
@@ -952,15 +984,14 @@ async def job_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         keyboard = get_all_cities()
         context.user_data['job_country'] = query.data
-        await query.edit_message_text("Work location selected")
-        await query.message.reply_text(
-            "Please select the city",
+        await query.edit_message_text(
+            "<b>Please select the city</b>",
             reply_markup=keyboard,
             parse_mode='HTML'
         )
         return JOB_CITY
     except Exception as e:
-        await update.message.reply_text("An error occurred while saving work location. Please try again.")
+        await query.edit_message_text("An error occurred while saving work location. Please try again.")
         print(f"Error in job_country: {e}")
         return ConversationHandler.END
 
@@ -971,7 +1002,6 @@ async def job_city(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
         
         context.user_data['job_city'] = query.data
-        await query.edit_message_text("City selected")
         
         keyboard = [
             [
@@ -983,14 +1013,14 @@ async def job_city(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 InlineKeyboardButton("Monthly", callback_data="Monthly")
             ]
         ]
-        await query.message.reply_text(
-            "Please select salary type:",
+        await query.edit_message_text(
+            "<b>Please select salary type</b>",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='HTML'
         )
         return SALARY_TYPE
     except Exception as e:
-        await update.message.reply_text("An error occurred while saving city. Please try again.")
+        await query.message.reply_text("An error occurred while saving city. Please try again.")
         print(f"Error in job_city: {e}")
         return ConversationHandler.END
 
@@ -1001,23 +1031,22 @@ async def salary_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
         
         context.user_data["salary_type"] = query.data
-        await query.edit_message_text("Salary type selected")
         
         keyboard = [
             [
                 InlineKeyboardButton("USD", callback_data="USD"),
                 InlineKeyboardButton("EUR", callback_data="EUR")
             ],
-            InlineKeyboardButton("ETB", callback_data="ETB")
+            [InlineKeyboardButton("ETB", callback_data="ETB")]
         ]
-        await query.message.reply_text(
-            "Please select currency",
+        await query.edit_message_text(
+            "<b>Please select currency</b>",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='HTML'
         )
         return SALARY_CURRENCY
     except Exception as e:
-        await update.message.reply_text("An error occurred while selecting salary type. Please try again.")
+        await query.edit_message_text("An error occurred while selecting salary type. Please try again.")
         # Optionally log the error for debugging
         print(f"Error in salary_type: {e}")
         return ConversationHandler.END
@@ -1029,19 +1058,18 @@ async def salary_currency(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
         
         context.user_data["salary_currency"] = query.data
-        await query.edit_message_text("Salary currency selected")
         
         keyboard = [
-            InlineKeyboardButton("Skip", callback_data='skip')
+            [InlineKeyboardButton("Skip", callback_data='skip')]
         ]
-        await query.message.reply_text(
-            "Please enter salary amount",
+        await query.edit_message_text(
+            "<b>Please enter salary amount</b>",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='HTML'
         )
         return SALARY_AMOUNT
     except Exception as e:
-        await update.message.reply_text("An error occurred while selecting salary currency. Please try again.")
+        await query.edit_message_text("An error occurred while selecting salary currency. Please try again.")
         # Optionally log the error for debugging
         print(f"Error in salary_currency: {e}")
         return ConversationHandler.END
@@ -1053,24 +1081,50 @@ async def salary_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if not salary_amount.isdigit() or len(salary_amount) < 1:
             await update.message.reply_text(
-                "<i>* Invalid salary amount</i>\n\nPlease enter salary amount",
+                "<i>* invalid salary amount</i>\n\n<b>Please enter salary amount</b>",
                 parse_mode='HTML'
             )
             return SALARY_AMOUNT
 
         context.user_data['salary_amount'] = salary_amount
         keyboard = [
-            InlineKeyboardButton("Skip", callback_data='skip')
+            [InlineKeyboardButton("Skip", callback_data='skip')]
         ]
         await update.message.reply_text(
-            "Finally, please pick some soft skills (optional)",
+            "<b>Finally, please pick some soft skills (optional)</b>",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='HTML'
         )
-        await skills_expertise(update, context)
-        return CONFIRM_JOB
+        
+        # await skills_expertise(update, context)
+        
+        return SKILLS_EXPERTISE
     except Exception as e:
         await update.message.reply_text("An error occurred while saving salary amount. Please try again.")
+        print(f"Error in salary_amount: {e}")
+        return ConversationHandler.END
+
+
+async def skip_salary_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        query = update.callback_query
+        await query.answer()
+        context.user_data['salary_amount'] = None
+        
+        keyboard = [
+            [InlineKeyboardButton("Skip", callback_data='skip')]
+        ]
+        await query.edit_message_text(
+            "<b>Finally, please pick some soft skills (optional)</b>",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+        
+        # await skills_expertise(update, context)
+        
+        return SKILLS_EXPERTISE
+    except Exception as e:
+        await query.edit_message_text("An error occurred while saving salary amount. Please try again.")
         print(f"Error in salary_amount: {e}")
         return ConversationHandler.END
 
@@ -1084,28 +1138,36 @@ async def skills_expertise(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ],
     ]
     job_details = (
-        f"Please confirm the job details: \n\n"
-        f"Title: {data['title']} \n\n"
-        f"Job Site: {data['job_site']} \n\n"
-        f"Job Type: {data['job_type']} \n\n"
-        f"Job Sector: {data['job_sector']} \n\n"
-        f"Education: {data['education']} \n\n"
-        f"Experience: {data['experience']} \n\n"
-        f"Gender: {data['gender']} \n\n"
-        f"Deadline: {data['deadline']} \n\n"
-        f"Vacancies: {data['vacancies']} \n\n"
-        f"Description: {data['description']} \n\n"
-        f"Country: {data['country']} \n\n"
-        f"City: {data['city']} \n\n"
-        f"Salary Type: {data['salary_type']} \n\n"
-        f"Salary Currency: {data['salary_currency']} \n\n"
-        f"Salary Amount: {data['salary_amount']} \n\n"
+        f"<b>Please confirm job details</b> \n\n"
+        f"<b>Job Title</b>: {data['job_title']} \n\n"
+        f"<b>Job Site</b>: {data['job_site']} \n\n"
+        f"<b>Job Type</b>: {data['job_type']} \n\n"
+        f"<b>Job Sector</b>: {data['job_sector']} \n\n"
+        f"<b>Education Qualification</b>: {data['education']} \n\n"
+        f"<b>Experience Level</b>: {data['experience']} \n\n"
+        f"<b>Gender</b>: {data['gender']} \n\n"
+        f"<b>Deadline</b>: {data['deadline']} \n\n"
+        f"<b>Vacancies</b>: {data['vacancies']} \n\n"
+        f"<b>Description</b>: {data['description']} \n\n"
+        f"<b>Country</b>: {data['job_country']} \n\n"
+        f"<b>City</b>: {data['job_city']} \n\n"
+        f"<b>Salary Type</b>: {data['salary_type']} \n\n"
+        f"<b>Salary Amount</b>: {data['salary_amount']} \n\n"
+        f"<b>Salary Currency</b>: {data['salary_currency']} \n\n"
     )
-    await update.message.reply_text(
-        text=job_details, 
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode='HTML'
-    )
+
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            text=job_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+    else:
+        await update.message.reply_text(
+            text=job_details, 
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
     return CONFIRM_JOB
 
     
@@ -1150,6 +1212,10 @@ async def confirm_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     user = get_user(update, context)
     
+    if not user:
+        await start(update, context)
+        return
+    
     data = context.user_data
     cur = conn.cursor()
     cur.execute(
@@ -1158,7 +1224,7 @@ async def confirm_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING job_id
         """,
-        (data["company_id"], user[0], data["category_id"], data["job_title"], data["job_type"], data["job_type"], data["job_sector"], data["education"], data["experience"], data["gender"], data["deadline"], data["vacancies"], data["description"], data["job_city"], data["job_country"], data["salary_type"], data["salary_amount"], data["salary_currency"]),
+        (data["company_id"], user[0], data["category_id"], data["job_title"], data["job_type"], data["job_site"], data["job_sector"], data["education"], data["experience"], data["gender"], data["deadline"], data["vacancies"], data["description"], data["job_city"], data["job_country"], data["salary_type"], data["salary_amount"], data["salary_currency"]),
     )
     conn.commit()
     job_id = cur.fetchone()[0]
@@ -1170,7 +1236,16 @@ async def confirm_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cur.execute("SELECT j.*, c.* FROM jobs j JOIN companies c ON j.company_id = c.company_id WHERE job_id = %s", (job_id,))
     job = cur.fetchone()
     
-    job_message = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \n{job[6]} \n\n<b>Requirements</b>: \n{job[7]} \n\n<b>__________________</b>\n\n<b>{job[19]}</b> \n\n"
+    job_details = (
+        f"Job Title: <b>\t{job[4]}</b> \n\n"
+        f"Job Type: <b>\t{job[6]} - {job[5]}</b> \n\n"
+        f"Work Location: <b>\t{job[15]}, {job[16]}</b> \n\n"
+        f"Applicants Needed: <b>\t{job[10]}</b> \n\n"
+        f"Salary: <b>\t{job[17]}</b> \n\n"
+        f"Deadline: <b>\t{format_date(job[11])}</b> \n\n"
+        f"<b>Description</b>: \t{job[13]} \n\n"
+        f"<b>Requirements</b>: \t{job[14]} \n\n"
+    )
 
     # Post job to the channel
     # job_message = (
@@ -1200,12 +1275,15 @@ async def confirm_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await context.bot.send_message(
         chat_id=os.getenv("HULUMJOBS_ETHIOIPA_CHANNEL_ID"), 
-        text=job_message, 
+        text=job_details, 
         reply_markup=reply_markup, 
         parse_mode="HTML"
     )
 
-    await query.edit_message_text("Job posted successfully and shared to the channel!")
+    await query.edit_message_text(
+        "<b>Job posted successfully and shared to the channel!</b>", 
+        parse_mode='HTML'
+    )
     
     # await query.edit_message_text("Job posted successfully!")
     return ConversationHandler.END
@@ -1213,9 +1291,15 @@ async def confirm_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cancel_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.callback_query:
-        await update.callback_query.edit_message_text("Job posting canceled.")
+        await update.callback_query.edit_message_text(
+            "<b>Job posting canceled</b>", 
+            parse_mode='HTML'
+        )
     else:
-        await update.message.reply_text("Job posting canceled.")
+        await update.message.reply_text(
+            "<b>Job posting canceled</b>",
+            parse_mode='HTML'
+        )
     return ConversationHandler.END
 
 
@@ -1294,7 +1378,7 @@ async def register_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # if "@" not in email or "." not in email:
         if not is_valid_email(email):
             await update.message.reply_text(
-                "<i>* Invalid email format.</i>\n\nPlease enter your email address",
+                "<i>* invalid email format.</i>\n\nPlease enter your email address",
                 parse_mode='HTML'
             )
             return REGISTER_EMAIL
@@ -1316,7 +1400,7 @@ async def register_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if not phone.isdigit() or len(phone) < 9:  # Basic validation for phone numbers
             await update.message.reply_text(
-                "<i>* Invalid phone number.</i>\n\nPlease enter your phone number",
+                "<i>* invalid phone number.</i>\n\nPlease enter your phone number",
                 parse_mode='HTML'
             )
             return REGISTER_PHONE
@@ -1368,19 +1452,28 @@ async def register_dob(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return REGISTER_DOB
         else:
             await update.message.reply_text(
-                "<i>* Invalid age.</i>\n\nPlease enter your age between 10 and 100",
+                "<i>* invalid age.</i>\n\nPlease enter your age between 10 and 100",
                 parse_mode='HTML'
             )
             return REGISTER_DOB
 
-        keyboard = [
-            [InlineKeyboardButton("Ethiopia", callback_data='Ethiopia')]
-        ]
+        # keyboard = [
+        #     [InlineKeyboardButton("Ethiopia", callback_data='Ethiopia')]
+        # ]
+        # await update.message.reply_text(
+        #     "Please select your country",
+        #     reply_markup=InlineKeyboardMarkup(keyboard)
+        # )
+        # return REGISTER_COUNTRY
+        
+        context.user_data['job_country'] = 'Ethiopia'
+        keyboard = get_all_cities()
         await update.message.reply_text(
-            "Please select your country",
-            reply_markup=InlineKeyboardMarkup(keyboard)
+            "<b>Please select your city</b>",
+            reply_markup=keyboard,
+            parse_mode='HTML'
         )
-        return REGISTER_COUNTRY
+        return REGISTER_CITY
     except Exception as e:
         await update.message.reply_text("An error occurred while saving your age. Please try again.")
         print(f"Error in register_dob: {e}")
@@ -1545,7 +1638,7 @@ def is_valid_email(email):
 
 def fetch_companies(user_id):
     cur = conn.cursor()
-    cur.execute("SELECT company_id, name FROM companies WHERE user_id = %s", (user_id,))
+    cur.execute("SELECT * FROM companies WHERE user_id = %s", (user_id,))
     companies = cur.fetchall()
     return companies
 
@@ -1556,6 +1649,50 @@ def fetch_categories():
     categories = cur.fetchall()
     return categories
 
+
+def is_isalnum_w_space(s):
+    if not s:
+        return False
+    
+    # Check if all characters are alphanumeric or spaces
+    return all(char.isalnum() or char.isspace() for char in s)
+
+
+def is_valid_date_format(date_string):
+    # Regular expression pattern for YYYY-M-D or YYYY-MM-DD
+    pattern = r'^\d{4}-(\d{1,2})-(\d{1,2})$'
+    
+    # Check if the date string matches the pattern
+    match = re.match(pattern, date_string)
+    if not match:
+        return False
+    
+    # Extract month and day from the match
+    month = int(match.group(1))
+    day = int(match.group(2))
+    
+    # Check if month is valid
+    if month < 1 or month > 12:
+        return False
+    
+    # Check if day is valid based on the month
+    if day < 1 or day > 31:
+        return False
+    
+    # Check for months with specific day limits
+    if month in {4, 6, 9, 11} and day > 30:
+        return False
+    if month == 2:
+        # Check for leap year
+        year = int(date_string[:4])
+        if (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0):
+            if day > 29:  # Leap year
+                return False
+        else:
+            if day > 28:  # Non-leap year
+                return False
+    
+    return True
 
 async def notify_group_on_registration(update: Update, context: ContextTypes.DEFAULT_TYPE, user_data, topic_id=GROUP_TOPIC_New_Employer_Registration_ID):
     view_keyboard = [
@@ -1623,7 +1760,7 @@ async def notify_group_on_creation(update: Update, context: ContextTypes.DEFAULT
     message = (
         f"\n🎉 <b>New Company Created!</b>\n\n"
         f"<b>Company Name</b>: {context.user_data["name"]}\n\n"
-        f"<b>Type</b>: {user_data["startup_type"].capitalize() + 'Startup' if user_data["company_type"] == 'startup' else user_data["company_type"].capitalize()}\n\n"
+        f"<b>Type</b>: {user_data["startup_type"].capitalize() + ' Startup' if user_data["company_type"] == 'startup' else user_data["company_type"].capitalize()}\n\n"
     )
     
     await context.bot.send_message(
@@ -1663,7 +1800,7 @@ async def capture_group_topics(update: Update, context: ContextTypes.DEFAULT_TYP
 
 
 
-# Conversation handlers
+# * Conversation handlers
 company_creation_handler = ConversationHandler(
     entry_points=[CallbackQueryHandler(create_company_start, pattern='create_company')],
     states={
@@ -1714,9 +1851,12 @@ post_job_handler = ConversationHandler(
         SALARY_CURRENCY: [CallbackQueryHandler(salary_currency)],
         SALARY_AMOUNT: [
             MessageHandler(filters.TEXT & ~filters.COMMAND, salary_amount),
-            CallbackQueryHandler(salary_amount)
+            CallbackQueryHandler(skip_salary_amount)
         ],
-        # SKILLS_EXPERTISE: [CallbackQueryHandler(skills_expertise)],
+        SKILLS_EXPERTISE: [
+            MessageHandler(filters.TEXT & ~filters.COMMAND, skills_expertise),
+            CallbackQueryHandler(skills_expertise)
+        ],
         CONFIRM_JOB: [
             CallbackQueryHandler(confirm_job, pattern="confirm_job"),
             CallbackQueryHandler(cancel_job, pattern="cancel_job"),

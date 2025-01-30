@@ -2,8 +2,6 @@
 
 Telegram bot that allows recruiters to post jobs and job seekers to browse & apply for jobs.
 
-
-
 ## Features
 
 - Job seekers can search for jobs, apply for jobs, and view their applications.
@@ -11,7 +9,6 @@ Telegram bot that allows recruiters to post jobs and job seekers to browse & app
 - Users can create an account and log in to the bot.
 - Users can view their profile information and update their information.
 - Users can view their job applications and manage their applications.
-
 
 ## Roadmap
 
@@ -27,19 +24,23 @@ Telegram bot that allows recruiters to post jobs and job seekers to browse & app
 - [ ] Add more features
 - [ ] Add more documentation
 
-
 ## Fixes
 
-- [ ] Restrict bots in the group *(respond to certain commands)*
+### Helpers
+
+- [ ] _keyboard = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]_  # Group buttons into rows this line works only for even numbers of buttons.. check it everywhere
+
+### General
+- [ ] Restrict bots in the group _(respond to certain commands)_
 - [ ] Empty `context.user_data`, `user_data` & `data` variables after you're done with 'em
 - [ ] `conn.close()` research this stuff & close every connection
 - [ ] Change age to dob in the db (by subtracting it when saving & fetching it)
 - [ ] Add the ability to enter city name when registering, if it's not available in the list
 - [ ] Remove Reply Keyboard properly, when done using it or user is moved to other steps
 - [ ] Edit functionality at confirm_apply stage
-- [ ] Go line by line & refine end user messages *(with AI & Grammarly)*
+- [ ] Go line by line & refine end user messages _(with AI & Grammarly)_
 - [x] When user uploads new cv while it only checks for docs & text ... it won't respond to other file types. Just add a check for the rest types & change the filter on `MessageHandler(filters.Document.ALL & ~filters.COMMAND, new_cv),`
-- [X] use `get_user(update, context)` helper function whenever you need to get the user object
+- [x] use `get_user(update, context)` helper function whenever you need to get the user object
   - [x] on applicant bot
   - [x] on employer bot
 - [ ] use `get_job(update, context)` helper function whenever you need to get a job object
@@ -62,11 +63,10 @@ Telegram bot that allows recruiters to post jobs and job seekers to browse & app
 - [ ] Add "You sure?" kinda prompt before canceling job posting, onboarding, applying, etc.
 - [ ] Remove all comments after testing everything (manually & automated)
 
-
 ## Ideas, for the round table
--  [ ] At least salary range should be a must, exact salary is preferred
--  [ ] Once an employer is done selecting his/her perfect candidate, there should be a reply message at the very least an automated replay. Something like "Thanks for participation, we've already chosen our candidate for the job."
 
+- [ ] At least salary range should be a must, exact salary is preferred
+- [ ] Once an employer is done selecting his/her perfect candidate, there should be a reply message at the very least an automated replay. Something like "Thanks for participation, we've already chosen our candidate for the job."
 
 # Snippets
 
