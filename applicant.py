@@ -148,7 +148,16 @@ async def show_job(update: Update, context: ContextTypes.DEFAULT_TYPE, job_id: s
             await update.message.reply_text("Job not found.")
         return
     
-    job_details = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \t{job[6]} \n\n"
+    job_details = (
+        f"Job Title: <b>\t{job[4]}</b> \n\n"
+        f"Job Type: <b>\t{job[6]} - {job[5]}</b> \n\n"
+        f"Work Location: <b>\t{job[15]}, {job[16]}</b> \n\n"
+        f"Applicants Needed: <b>\t{job[10]}</b> \n\n"
+        f"Salary: <b>\t{job[17]}</b> \n\n"
+        f"Deadline: <b>\t{format_date(job[11])}</b> \n\n"
+        f"<b>Description</b>: \t{job[13]} \n\n"
+        f"<b>Requirements</b>: \t{job[14]} \n\n"
+    )
 
     keyboard = [
         [InlineKeyboardButton("Apply", callback_data=f'apply_{job[0]}')]
@@ -188,8 +197,16 @@ async def browse_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     total_jobs = len(job_list)
     # current_job_index = 0  # Reset index when starting
     
-    job_details = f"\nJob Title: <b>\t{job[5]}</b> \n\nJob Type: <b>\t{job[4]}</b> \n\nWork Location: <b>\t{job[8]}, {job[9]}</b> \n\nSalary: <b>\t{job[10]}</b> \n\nDeadline: <b>\t{format_date(job[11])}</b> \n\n<b>Description</b>: \n{job[6]} \n\n<b>Requirements</b>: \n{job[7]} \n\n"
-    
+    job_details = (
+        f"Job Title: <b>\t{job[4]}</b> \n\n"
+        f"Job Type: <b>\t{job[6]} - {job[5]}</b> \n\n"
+        f"Work Location: <b>\t{job[15]}, {job[16]}</b> \n\n"
+        f"Applicants Needed: <b>\t{job[10]}</b> \n\n"
+        f"Salary: <b>\t{job[17]}</b> \n\n"
+        f"Deadline: <b>\t{format_date(job[11])}</b> \n\n"
+        f"<b>Description</b>: \t{job[13]} \n\n"
+        f"<b>Requirements</b>: \t{job[14]} \n\n"
+    )
 
     # keyboard = []
     # if current_job_index > 0:
@@ -249,6 +266,10 @@ async def next_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def saved_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = get_user(update, context)
+    
+    if not user:
+        await start(update, context)
+        return
 
     cur = conn.cursor()
     cur.execute(
@@ -267,6 +288,10 @@ async def saved_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def my_applications(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = get_user(update, context)
+    
+    if not user:
+        await start(update, context)
+        return
 
     cur = conn.cursor()
     cur.execute(
@@ -288,7 +313,18 @@ async def my_applications(update: Update, context: ContextTypes.DEFAULT_TYPE):
     total_applications = len(application_list)
     # current_application_index = 0  # Reset index when starting
     
-    application_details = f"\nJob Title: <b>\t{application[5]}</b> \n\nJob Type: <b>\t{application[4]}</b> \n\nWork Location: <b>\t{application[8]}, {application[9]}</b> \n\nSalary: <b>\t{application[10]}</b> \n\nDeadline: <b>\t{format_date(application[11])}</b> \n\n<b>Description</b>: \n{application[6]} \n\n<b>Requirements</b>: \n{application[7]} \n\n<b>__________________</b>\n\n<b>Applied at</b>: \t{format_date(application[25])} \n\n<b>Application Status</b>: \t{application[24].upper()} \n\n"
+    application_details = (
+        f"Job Title: <b>\t{application[4]}</b> \n\n"
+        f"Job Type: <b>\t{application[6]} - {application[5]}</b> \n\n"
+        f"Work Location: <b>\t{application[15]}, {application[16]}</b> \n\n"
+        f"Salary: <b>\t{application[17]}</b> \n\n"
+        f"Deadline: <b>\t{format_date(application[11])}</b> \n\n"
+        f"<b>Description</b>: \n{application[13]} \n\n"
+        f"<b>Requirements</b>: \n{application[14]} \n\n"
+        f"<b>__________________</b>\n\n"
+        f"<b>Applied at</b>: \t{format_date(application[34])} \n\n"
+        f"<b>Application Status</b>: \t{application[33].upper()} \n\n"
+    )
 
     # keyboard = []
     # if current_application_index > 0:
@@ -347,6 +383,10 @@ async def next_application(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def my_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = get_user(update, context)
+    
+    if not user:
+        await start(update, context)
+        return
     
     keyboard = [[InlineKeyboardButton("Edit Profile", callback_data="edit_profile")]]
     
@@ -776,6 +816,10 @@ async def apply_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['job_id'] = int(query.data.split("_")[-1])
     user = get_user(update, context)
     
+    if not user:
+        await start(update, context)
+        return
+    
     # checking duplicate
     cur = conn.cursor()
     cur.execute("SELECT * FROM applications WHERE job_id = %s AND user_id = %s", (context.user_data['job_id'], user[0]))
@@ -1023,6 +1067,10 @@ async def confirm_apply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     user = get_user(update, context)
     
+    if not user:
+        await start(update, context)
+        return
+    
     # checking duplicate
     # cur.execute("SELECT * FROM applications WHERE job_id = %s AND user_id = %s", (context.user_data['job_id'], user[0]))
     # duplicate = cur.fetchone()
@@ -1240,14 +1288,21 @@ async def register_dob(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return REGISTER_DOB
 
-        keyboard = [
-            [InlineKeyboardButton("Ethiopia", callback_data='Ethiopia')]
-        ]
+        # keyboard = [
+        #     [InlineKeyboardButton("Ethiopia", callback_data='Ethiopia')]
+        # ]
+        # await update.message.reply_text(
+        #     "Please select your country",
+        #     reply_markup=InlineKeyboardMarkup(keyboard)
+        # )
+        
+        keyboard = get_all_cities()
+        context.user_data['country'] = 'Ethiopia'
         await update.message.reply_text(
-            "Please select your country",
-            reply_markup=InlineKeyboardMarkup(keyboard)
+            "Please select your city",
+            reply_markup=keyboard
         )
-        return REGISTER_COUNTRY
+        return REGISTER_CITY
     except Exception as e:
         await update.message.reply_text("An error occurred while saving your age. Please try again.")
         print(f"Error in register_dob: {e}")
@@ -1317,7 +1372,7 @@ async def register_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return REGISTER_CITY
     except Exception as e:
-        await update.effective_message.reply_text("An error occurred while saving your country. Please try again.")
+        await query.edit_message_text("An error occurred while saving your country. Please try again.")
         print(f"Error in register_country: {e}")
         return ConversationHandler.END
 

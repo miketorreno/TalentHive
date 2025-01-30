@@ -26,7 +26,7 @@ conn = psycopg2.connect(
 
 
 # Define states
-REGISTER, REGISTER_NAME, REGISTER_FIRSTNAME, REGISTER_LASTNAME, REGISTER_EMAIL, REGISTER_PHONE, REGISTER_GENDER, REGISTER_DOB, REGISTER_COUNTRY, REGISTER_CITY, CONFIRMATION, COMPANY_TYPE, STARTUP_TYPE, COMPANY_NAME, TRADE_LICENSE, EMPLOYER_TYPE, EMPLOYER_PHOTO, COMPANY_AUTH_LETTER, CONFIRM_COMPANY, CHOOSE_ACTION, SELECT_COMPANY, JOB_TITLE, JOB_SITE, JOB_TYPE, JOB_SECTOR, EDUCATION_QUALIFICATION, EXPERIENCE_LEVEL, GENDER_PREFERENCE, JOB_DEADLINE, VACANCIES, JOB_DESCRIPTION, JOB_REQUIREMENTS, JOB_CITY, JOB_COUNTRY, SALARY_TYPE, SALARY_AMOUNT, SALARY_CURRENCY, SKILLS_EXPERTISE, CONFIRM_JOB = range(40)
+REGISTER, REGISTER_NAME, REGISTER_FIRSTNAME, REGISTER_LASTNAME, REGISTER_EMAIL, REGISTER_PHONE, REGISTER_GENDER, REGISTER_DOB, REGISTER_COUNTRY, REGISTER_CITY, CONFIRMATION, COMPANY_TYPE, STARTUP_TYPE, COMPANY_NAME, TRADE_LICENSE, EMPLOYER_TYPE, EMPLOYER_PHOTO, COMPANY_AUTH_LETTER, CONFIRM_COMPANY, CHOOSE_ACTION, SELECT_COMPANY, JOB_TITLE, JOB_SITE, JOB_TYPE, JOB_SECTOR, EDUCATION_QUALIFICATION, EXPERIENCE_LEVEL, GENDER_PREFERENCE, JOB_DEADLINE, VACANCIES, JOB_DESCRIPTION, JOB_REQUIREMENTS, JOB_CITY, JOB_COUNTRY, SALARY_TYPE, SALARY_AMOUNT, SALARY_CURRENCY, SKILLS_EXPERTISE, CONFIRM_JOB = range(39)
 
 # List of cities sorted alphabetically
 CITIES = sorted([
@@ -206,7 +206,6 @@ async def create_company_start(update: Update, context: ContextTypes.DEFAULT_TYP
     try:
         query = update.callback_query
         await query.answer()
-        await query.message.reply_text("Let's create your company profile.")
         
         keyboard = [
             [
@@ -215,14 +214,14 @@ async def create_company_start(update: Update, context: ContextTypes.DEFAULT_TYP
             ]
         ]
     
-        await query.message.reply_text(
-            "Please select the type of your company",
+        await query.edit_message_text(
+            "<b>Let's create your company, \nPlease select the type of your company</b>",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='HTML'
         )
         return COMPANY_TYPE
     except Exception as e:
-        await update.effective_message.reply_text(
+        await query.edit_message_text(
             "An error occurred creating your company. Please try again."
         )
         # Optionally log the error for debugging
@@ -238,8 +237,8 @@ async def company_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['company_type'] = query.data
         if query.data == 'company':
             context.user_data['startup_type'] = None
-            await query.message.reply_text(
-                "Please enter the name of your company",
+            await query.edit_message_text(
+                "<b>Please enter the name of your company</b>",
                 parse_mode='HTML'
             )
             return COMPANY_NAME
@@ -250,14 +249,14 @@ async def company_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     InlineKeyboardButton("Unlicensed", callback_data='unlicensed')
                 ]
             ]
-            await query.message.reply_text(
-                "Please select the type of your startup",
+            await query.edit_message_text(
+                "<b>Please select the type of your startup</b>",
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode='HTML'
             )
             return STARTUP_TYPE
         else:
-            await update.message.reply_text(
+            await query.edit_message_text(
                 "An error occurred with your company type. Please try again."
             )
             # Optionally log the error for debugging
@@ -278,8 +277,8 @@ async def startup_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
         
         context.user_data['startup_type'] = query.data
-        await query.message.reply_text(
-            "Please enter the name of your company",
+        await query.edit_message_text(
+            "<b>Please enter the name of your company</b>",
             parse_mode='HTML'
         )
         return COMPANY_NAME
@@ -298,7 +297,7 @@ async def company_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if not name.isalnum():
             await update.message.reply_text(
-                "<i>* Company name should only contain alphabets and numbers.</i>\n\nPlease enter the name your company",
+                "<i>* Company name should only contain alphabets and numbers.</i>\n\n<b>Please enter the name your company</b>",
                 parse_mode='HTML'
             )
             return COMPANY_NAME
@@ -306,7 +305,7 @@ async def company_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['name'] = name
         if context.user_data['company_type'] == 'company' or context.user_data['startup_type'] == 'licensed':
             await update.message.reply_text(
-                "Please upload your trade license \n\n<i>* you can upload pdf or photo</i>",
+                "<b>Please upload your trade license</b> \n\n<i>* you can upload pdf or photo</i>",
                 parse_mode='HTML'
             )
             return TRADE_LICENSE
@@ -320,7 +319,7 @@ async def company_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ]
         
             await update.message.reply_text(
-                "Are you the founder or recruiter?",
+                "<b>Are you the founder or recruiter?</b>",
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode='HTML'
             )
@@ -345,7 +344,7 @@ async def trade_license(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         if not update.message.photo:
             await update.message.reply_text(
-                "<i>* Invalid format.</i>\n\nPlease upload your trade license",
+                "<i>* Invalid format.</i>\n\n<b>Please upload your trade license</b>",
                 parse_mode='HTML'
             )
             return TRADE_LICENSE
@@ -359,7 +358,7 @@ async def trade_license(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
     
         await update.message.reply_text(
-            "Are you the general manager or recruiter?",
+            "<b>Are you the general manager or recruiter?</b>",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='HTML'
         )
@@ -376,7 +375,7 @@ async def trade_license(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def unsupported_trade_license(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await update.message.reply_text(
-            "<i>* Invalid file type</i>\n\nPlease upload a PHOTO",
+            "<i>* Invalid file type</i>\n\n<b>Please upload a PHOTO</b>",
             parse_mode='HTML'
         )
         return TRADE_LICENSE
@@ -395,8 +394,8 @@ async def employer_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
         
         context.user_data['employer_type'] = query.data
-        await query.message.reply_text(
-            "Please upload your ID photo",
+        await query.edit_message_text(
+            "<b>Please upload your ID photo</b>",
             parse_mode='HTML'
         )
         return EMPLOYER_PHOTO
@@ -413,7 +412,7 @@ async def employer_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         if not update.message.photo:
             await update.message.reply_text(
-                "<i>* Invalid format.</i>\n\nPlease upload your ID photo",
+                "<i>* Invalid format.</i>\n\n<b>Please upload your ID photo</b>",
                 parse_mode='HTML'
             )
             return EMPLOYER_PHOTO
@@ -435,6 +434,7 @@ async def employer_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"{'Trade License Photo: \t✅ \n\n' if startup_type != 'unlicensed' else ''}"
             f"Employer Photo: \t✅\n\n"
         )
+        
         if context.user_data['employer_type'] == 'general_manager' or context.user_data['employer_type'] == 'founder':
             await update.message.reply_text(
                 text=company_details,
@@ -474,7 +474,7 @@ async def employer_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def unsupported_employer_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await update.message.reply_text(
-            "<i>* Invalid file type</i>\n\nPlease upload a PHOTO",
+            "<i>* Invalid file type</i>\n\n<b>Please upload a PHOTO</b>",
             parse_mode='HTML'
         )
         return EMPLOYER_PHOTO
@@ -526,7 +526,10 @@ async def company_auth_letter(update: Update, context: ContextTypes.DEFAULT_TYPE
             )
             return CONFIRM_COMPANY
         else:
-            await update.message.reply_text("Please upload a valid document.")
+            await update.message.reply_text(
+                "<b>Please upload a valid document</b>", 
+                parse_mode='HTML'
+            )
             return COMPANY_AUTH_LETTER
     except Exception as e:
         await update.message.reply_text(
@@ -540,7 +543,7 @@ async def company_auth_letter(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def unsupported_auth_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await update.message.reply_text(
-            "<i>* Invalid file type</i>\n\nPlease upload a PDF or Word document",
+            "<i>* Invalid file type</i>\n\n<b>Please upload a PDF or Word document</b>",
             parse_mode='HTML'
         )
         return COMPANY_AUTH_LETTER
@@ -570,10 +573,13 @@ async def confirm_company(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Notify the group about the new company creation
         await notify_group_on_creation(update, context, data)
 
-        await query.edit_message_text("Company created successfully!")
+        await query.edit_message_text(
+            "<b>Company created successfully!</b>", 
+            parse_mode='HTML'
+        )
         return ConversationHandler.END
     except Exception as e:
-        await update.message.reply_text(
+        await query.edit_message_text(
             "An error occurred while saving your company details. Please try again."
         )
         # Optionally log the error for debugging
@@ -584,18 +590,31 @@ async def confirm_company(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cancel_company(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.callback_query:
         query = update.callback_query
-        await query.edit_message_text("Company creation canceled.")
+        await query.edit_message_text(
+            "<b>Company creation canceled</b>",
+            parse_mode='HTML'
+        )
     else:
-        await update.message.reply_text("Company creation canceled.")
+        await query.edit_message_text(
+            "<b>Company creation canceled</b>",
+            parse_mode='HTML'
+        )
 
     return ConversationHandler.END
 
 
 async def cancel_company_creation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.callback_query:
-        await update.callback_query.edit_message_text("Company creation canceled.")
+        query = update.callback_query
+        await query.edit_message_text(
+            "<b>Company creation canceled</b>", 
+            parse_mode='HTML'
+        )
     else:
-        await update.message.reply_text("Company creation canceled.")
+        await update.message.reply_text(
+            "<b>Company creation canceled</b>", 
+            parse_mode='HTML'
+        )
     return ConversationHandler.END
 
 
