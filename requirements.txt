@@ -1,3 +1,5 @@
+black
+redis
 torch
 openai
 pytest
@@ -7,4 +9,5 @@ pytest-mock
 transformers
 pytest-asyncio
 psycopg2-binary
+pylint[spelling]
 python-telegram-bot

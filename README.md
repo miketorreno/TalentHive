@@ -28,9 +28,14 @@ Telegram bot that allows recruiters to post jobs and job seekers to browse & app
 
 ### Helpers
 
-- [ ] _keyboard = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]_  # Group buttons into rows this line works only for even numbers of buttons.. check it everywhere
+- [ ] _keyboard = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]_ # Group buttons into rows this line works only for even numbers of buttons.. check it everywhere
+
+### applicants.handlers.profile
+
+- [ ] Add input data validation before updating db. Take these validations from register user
 
 ### General
+
 - [ ] Restrict bots in the group _(respond to certain commands)_
 - [ ] Empty `context.user_data`, `user_data` & `data` variables after you're done with 'em
 - [ ] `conn.close()` research this stuff & close every connection
