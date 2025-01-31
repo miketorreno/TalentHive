@@ -962,8 +962,9 @@ async def new_cv(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not file_name.endswith(('.pdf', '.doc', '.docx')):
             keyboard = [[InlineKeyboardButton("Skip", callback_data='skip_new_cv')]]
             await update.message.reply_text(
-                "Invalid file type. Please upload a PDF or Word document.",
+                "<i>* invalid file type</i> \n\n<b>Please upload a PDF or Word document</b>",
                 reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
             )
             return NEW_CV
 
@@ -987,8 +988,9 @@ async def unsupported_cv(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle unsupported file uploads."""
     keyboard = [[InlineKeyboardButton("Skip", callback_data='skip_new_cv')]]
     await update.message.reply_text(
-        "Invalid file type. Please upload a PDF or Word document.",
+        "<i>* invalid file type</i> \n\n<b>Please upload a PDF or Word document</b>",
         reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='HTML'
     )
     return NEW_CV
 
@@ -1295,6 +1297,7 @@ async def register_dob(update: Update, context: ContextTypes.DEFAULT_TYPE):
         #     "Please select your country",
         #     reply_markup=InlineKeyboardMarkup(keyboard)
         # )
+        # return REGISTER_COUNTRY
         
         keyboard = get_all_cities()
         context.user_data['country'] = 'Ethiopia'

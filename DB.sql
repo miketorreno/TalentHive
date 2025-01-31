@@ -11,7 +11,8 @@ CREATE TABLE users (
   user_id SERIAL PRIMARY KEY,
   telegram_id BIGINT NOT NULL,
   role_id INT NOT NULL CHECK (role_id IN (1, 2, 3)),
-  name VARCHAR NOT NULL,
+  first_name VARCHAR NOT NULL,
+  last_name VARCHAR NOT NULL,
   username VARCHAR,
   gender VARCHAR,
   dob VARCHAR,
@@ -125,7 +126,6 @@ INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Telecommuni
 INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Non-Profit', 'Positions in organizations focused on social causes and community service.');
 INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Government', 'Jobs in federal, state, and local government agencies.');
 INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Environmental Services', 'Positions related to environmental protection, sustainability, and conservation.');
-INSERT INTO categories (parent_id, name, description) VALUES (NULL, 'Supply Chain Management', 'Jobs focused on logistics, procurement, and inventory management.');
 
 
 

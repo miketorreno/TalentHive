@@ -1,8 +1,7 @@
 {
-    "editor.tabSize": 4,
-    "cSpell.words": [
-        "jobseeker",
-        "jobseekers"
-    ],
-    "codeium.enableCodeLens": false,
+  "editor.tabSize": 4,
+  // "cSpell.words": ["jobseeker", "jobseekers"],
+  // "codeium.enableCodeLens": false,
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "ms-python.black-formatter"
 }
