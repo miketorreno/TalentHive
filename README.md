@@ -24,6 +24,10 @@ Telegram bot that allows recruiters to post jobs and job seekers to browse & app
 - [ ] Add more features
 - [ ] Add more documentation
 
+## Research
+
+- [ ] Consistency: should you use fullstops for your users? | Should you use a fullstops for the last sentence?
+
 ## Fixes
 
 ### Helpers
