@@ -206,8 +206,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard = [
                 ["Browse Jobs", "Saved Jobs"],
                 ["My Profile", "My Applications"],
-                # ["Job Notifications", "Help"]
                 ["Help"],
+                # ["Job Notifications", "Help"]
             ]
             await update.message.reply_text(
                 text=f"<b>Hello {(user[3].split()[0]).capitalize()} 👋\t Welcome to HulumJobs!</b> \n\n"
@@ -287,6 +287,26 @@ def format_data(rows):
         # Adjust the formatting based on your data
         formatted_rows.append(f"ID: {row[0]}\nName: {row[1]}\nDescription: {row[2]}\n")
     return "\n".join(formatted_rows)
+
+
+def build_keyboard(offset: int, limit: int, rows_count: int):
+    """
+    Returns an InlineKeyboardMarkup with Next and Previous buttons.
+    The callback_data includes the direction, current offset, and limit.
+    """
+    buttons = []
+    if offset > 0:
+        buttons.append(
+            InlineKeyboardButton("Previous", callback_data=f"prev|{offset}|{limit}")
+        )
+    # If the page is “full”, assume there may be more rows to show
+    if rows_count == limit:
+        buttons.append(
+            InlineKeyboardButton("Next", callback_data=f"next|{offset}|{limit}")
+        )
+    if buttons:
+        return InlineKeyboardMarkup([buttons])
+    return None
 
 
 async def paginate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1109,7 +1129,7 @@ async def job_notifications(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        text=f"<b>Help</b>\n\n"
+        text="<b>Help</b>\n\n"
         "<b>Browse Jobs</b> - find jobs that best fit your schedule \n\n"
         "<b>Saved Jobs</b> - your saved jobs \n\n"
         "<b>My Profile</b> - manage your profile \n\n"
@@ -1841,8 +1861,8 @@ async def confirm_registration(update: Update, context: ContextTypes.DEFAULT_TYP
             keyboard = [
                 ["Browse Jobs", "Saved Jobs"],
                 ["My Profile", "My Applications"],
-                # ["Job Notifications", "Help"]
                 ["Help"],
+                # ["Job Notifications", "Help"]
             ]
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
