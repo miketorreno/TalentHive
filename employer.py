@@ -162,6 +162,11 @@ CITIES = sorted(
     ]
 )
 
+current_myjob_index = 0
+total_myjobs = 0
+current_company_index = 0
+total_companies = 0
+
 GROUP_TOPIC_New_Company_Created_ID = 67
 GROUP_TOPIC_New_Employer_Registration_ID = 17
 
@@ -218,7 +223,7 @@ async def main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # await update.message.reply_text("Post a job")
     # await post_a_job(update, context)
     if choice == "my job posts":
-        await my_jobs(update, context)
+        await my_job_posts(update, context)
     elif choice == "my companies":
         await my_companies(update, context)
     elif choice == "notifications":
@@ -256,6 +261,106 @@ async def my_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(message, parse_mode="Markdown")
 
 
+async def my_job_posts(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """List all companies owned by the user."""
+    user = get_user(update, context)
+
+    if not user:
+        await start(update, context)
+        return
+
+    # Fetch companies
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM jobs WHERE user_id = %s", (user[0],))
+    myjobs = cur.fetchall()
+
+    if not myjobs:
+        keyboard = [[InlineKeyboardButton("Post a Job", callback_data="post_a_job")]]
+        if update.callback_query:
+            await update.callback_query.edit_message_text(
+                "You haven't posted a job yet"
+            )
+        else:
+            await update.message.reply_text("You haven't posted a job yet")
+        return
+
+    myjobs_list = [job for job in myjobs]
+    global current_myjob_index
+    myjob = myjobs_list[current_myjob_index]
+    global total_myjobs
+    total_myjobs = len(myjobs_list)
+    # current_myjob_index = 0  # Reset index when starting
+
+    myjob_details = (
+        f"Job Title: <b>\t{myjob[4]}</b> \n\n"
+        f"Job Type: <b>\t{myjob[6]} - {myjob[5]}</b> \n\n"
+        f"Work Location: <b>\t{myjob[15]}, {myjob[16]}</b> \n\n"
+        f"Salary: <b>\t{myjob[17]}</b> \n\n"
+        f"Deadline: <b>\t{format_date(myjob[11])}</b> \n\n"
+        f"<b>Description</b>: \n{myjob[13]} \n\n"
+        f"<b>Requirements</b>: \n{myjob[14]} \n\n"
+    )
+
+    keyboard = []
+    if total_myjobs > 1:
+        if current_myjob_index > 0:
+            keyboard = [
+                [
+                    InlineKeyboardButton("Previous", callback_data="myjob_previous"),
+                    InlineKeyboardButton("Next", callback_data="myjob_next"),
+                ],
+                [
+                    InlineKeyboardButton("Edit", callback_data="myjob_edit"),
+                    InlineKeyboardButton("Close", callback_data="myjob_close"),
+                ],
+                # [InlineKeyboardButton("Post a Job", callback_data="post_a_job")],
+            ]
+            if total_myjobs == current_myjob_index + 1:
+                keyboard = [
+                    [InlineKeyboardButton("Previous", callback_data="myjob_previous")],
+                    [
+                        InlineKeyboardButton("Edit", callback_data="myjob_edit"),
+                        InlineKeyboardButton("Close", callback_data="myjob_close"),
+                    ],
+                    # [InlineKeyboardButton("Post a Job", callback_data="post_a_job")],
+                ]
+        else:
+            keyboard = [
+                [InlineKeyboardButton("Next", callback_data="myjob_next")],
+                [
+                    InlineKeyboardButton("Edit", callback_data="myjob_edit"),
+                    InlineKeyboardButton("Close", callback_data="myjob_close"),
+                ],
+                # [InlineKeyboardButton("Post a Job", callback_data="post_a_job")],
+            ]
+
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            text=myjob_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+    else:
+        await update.message.reply_text(
+            text=myjob_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+
+
+async def next_myjob(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global current_myjob_index
+    query = update.callback_query
+    await query.answer()  # Acknowledge the callback
+
+    if query.data == "myjob_next":
+        current_myjob_index += 1
+    elif query.data == "myjob_previous":
+        current_myjob_index -= 1
+
+    await my_job_posts(update, context)
+
+
 async def my_companies(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """List all companies owned by the user."""
     user = get_user(update, context)
@@ -269,25 +374,90 @@ async def my_companies(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cur.execute("SELECT * FROM companies WHERE user_id = %s", (user[0],))
     companies = cur.fetchall()
 
-    keyboard = [
-        [InlineKeyboardButton("Add Company", callback_data="create_company")],
-    ]
-
     if not companies:
-        await update.message.reply_text(
-            "You haven't created any companies yet.",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-        )
+        keyboard = [
+            [InlineKeyboardButton("Add Company", callback_data="create_company")],
+        ]
+        if update.callback_query:
+            await update.callback_query.edit_message_text(
+                "You haven't created a company yet",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+            )
+        else:
+            await update.message.reply_text(
+                "You haven't created a company yet",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+            )
         return
 
-    # Format the list of companies
-    message = "**Your Companies:** \n\n"
-    for company in companies:
-        message += f"- **ID:** {company[0]}\n  **Name:** {company[4]}\n  **Description:** {company[7]}\n  **Approval status:** {company[8]}\n\n"
+    company_list = [job for job in companies]
+    global current_company_index
+    company = company_list[current_company_index]
+    global total_companies
+    total_companies = len(company_list)
+    # current_company_index = 0  # Reset index when starting
 
-    await update.message.reply_text(
-        text=message, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown"
+    company_details = (
+        f"Name: <b>\t{company[4]}{' \t✅' if company[9] else ''}</b> \n\n"
+        f"Description: <b>\t{company[7]}</b> \n\n"
+        f"Approval status: <b>\t{company[8]}</b> \n\n"
+        f"Verified: <b>\t{company[9]}</b> \n\n"
     )
+
+    keyboard = []
+    if total_companies > 1:
+        if current_company_index > 0:
+            keyboard = [
+                [
+                    InlineKeyboardButton("Previous", callback_data="company_previous"),
+                    InlineKeyboardButton("Next", callback_data="company_next"),
+                ],
+                [InlineKeyboardButton("Add Company", callback_data="create_company")],
+            ]
+            if total_companies == current_company_index + 1:
+                keyboard = [
+                    [
+                        InlineKeyboardButton(
+                            "Previous", callback_data="company_previous"
+                        ),
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "Add Company", callback_data="create_company"
+                        )
+                    ],
+                ]
+        else:
+            keyboard = [
+                [InlineKeyboardButton("Next", callback_data="company_next")],
+                [InlineKeyboardButton("Add Company", callback_data="create_company")],
+            ]
+
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            text=company_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+    else:
+        await update.message.reply_text(
+            text=company_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+
+
+async def next_company(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global current_company_index
+    query = update.callback_query
+    await query.answer()  # Acknowledge the callback
+
+    if query.data == "company_next":
+        current_company_index += 1
+    elif query.data == "company_previous":
+        current_company_index -= 1
+
+    await my_companies(update, context)
 
 
 async def my_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2140,6 +2310,8 @@ def main():
     # app.add_handler(MessageHandler(filters.ALL, capture_group_topics))
 
     # Callback Query Handlers
+    app.add_handler(CallbackQueryHandler(next_company, pattern="^company_.*"))
+    app.add_handler(CallbackQueryHandler(next_myjob, pattern="^myjob_.*"))
     app.add_handler(
         CallbackQueryHandler(view_employer_profile, pattern="^view_employer_.*")
     )
@@ -2152,7 +2324,12 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, main_menu))
 
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help))
     app.add_handler(CommandHandler("cancel", cancel))
+    # app.add_handler(CommandHandler("post_a_job", post_a_job))
+    app.add_handler(CommandHandler("my_job_posts", my_job_posts))
+    app.add_handler(CommandHandler("my_profile", my_profile))
+    app.add_handler(CommandHandler("my_companies", my_companies))
 
     print("Bot is running...")
     app.run_polling(timeout=60)

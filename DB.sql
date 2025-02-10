@@ -153,6 +153,7 @@ CREATE TABLE jobs (
   skills_expertise TEXT[],
   status VARCHAR CHECK (status IN ('pending', 'approved', 'rejected')) DEFAULT 'pending',
   promoted BOOLEAN DEFAULT FALSE,
+  closed BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP,
   deleted_at TIMESTAMP
