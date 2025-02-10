@@ -1,20 +1,16 @@
 import os
 import re
-import sys
 import json
-import signal
 import logging
+from datetime import datetime
 import psycopg2
-from datetime import date, datetime
 from telegram import (
     Update,
     InlineKeyboardMarkup,
     InlineKeyboardButton,
     ReplyKeyboardMarkup,
-    ReplyKeyboardRemove,
 )
 from telegram.ext import (
-    Updater,
     CommandHandler,
     CallbackQueryHandler,
     ConversationHandler,
@@ -24,8 +20,8 @@ from telegram.ext import (
     ContextTypes,
 )
 
-from config import HUGGINGFACE_MODEL
-from utils.cover_letter import CoverLetterGenerator
+# from config import HUGGINGFACE_MODEL
+# from utils.cover_letter import CoverLetterGenerator
 
 # cover_letter_gen = CoverLetterGenerator(HUGGINGFACE_MODEL)
 
@@ -1524,7 +1520,7 @@ async def onboarding_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text=f"Please enter your first name",
+            text="Please enter your first name",
             parse_mode="HTML",
         )
         return REGISTER_FIRSTNAME
@@ -1852,7 +1848,7 @@ async def confirm_registration(update: Update, context: ContextTypes.DEFAULT_TYP
                 return ConversationHandler.END
 
             await query.edit_message_text(
-                f"Registered successfully \t 🎉",
+                "Registered successfully \t 🎉",
                 # f"Registered successfully \t 🎉 \n\nWelcome to HulumJobs <b>{user_data['firstname'].capitalize()}</b>!",
                 parse_mode="HTML",
             )

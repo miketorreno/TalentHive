@@ -1,17 +1,15 @@
 import os
 import re
 import logging
+from datetime import datetime
 import psycopg2
-from datetime import date, datetime
 from telegram import (
     Update,
     InlineKeyboardMarkup,
     InlineKeyboardButton,
     ReplyKeyboardMarkup,
-    ReplyKeyboardRemove,
 )
 from telegram.ext import (
-    Updater,
     CommandHandler,
     CallbackQueryHandler,
     ConversationHandler,
@@ -176,6 +174,8 @@ current_myjob_index = 0
 total_myjobs = 0
 current_company_index = 0
 total_companies = 0
+current_applicant_index = 0
+total_applicants = 0
 
 GROUP_TOPIC_New_Company_Created_ID = 67
 GROUP_TOPIC_New_Employer_Registration_ID = 17
@@ -323,7 +323,11 @@ async def my_job_posts(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     InlineKeyboardButton("Edit", callback_data="myjob_edit"),
                     InlineKeyboardButton("Close", callback_data="myjob_close"),
                 ],
-                # [InlineKeyboardButton("Post a Job", callback_data="post_a_job")],
+                [
+                    InlineKeyboardButton(
+                        "View Applicants", callback_data=f"view_applicants_{myjob[0]}"
+                    )
+                ],
             ]
             if total_myjobs == current_myjob_index + 1:
                 keyboard = [
@@ -332,7 +336,12 @@ async def my_job_posts(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         InlineKeyboardButton("Edit", callback_data="myjob_edit"),
                         InlineKeyboardButton("Close", callback_data="myjob_close"),
                     ],
-                    # [InlineKeyboardButton("Post a Job", callback_data="post_a_job")],
+                    [
+                        InlineKeyboardButton(
+                            "View Applicants",
+                            callback_data=f"view_applicants_{myjob[0]}",
+                        )
+                    ],
                 ]
         else:
             keyboard = [
@@ -341,7 +350,11 @@ async def my_job_posts(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     InlineKeyboardButton("Edit", callback_data="myjob_edit"),
                     InlineKeyboardButton("Close", callback_data="myjob_close"),
                 ],
-                # [InlineKeyboardButton("Post a Job", callback_data="post_a_job")],
+                [
+                    InlineKeyboardButton(
+                        "View Applicants", callback_data=f"view_applicants_{myjob[0]}"
+                    )
+                ],
             ]
 
     if update.callback_query:
@@ -369,6 +382,103 @@ async def next_myjob(update: Update, context: ContextTypes.DEFAULT_TYPE):
         current_myjob_index -= 1
 
     await my_job_posts(update, context)
+
+
+async def view_applicants(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """List all companies owned by the user."""
+    query = update.callback_query
+    await query.answer()
+    job_id = int(query.data.split("_")[-1])
+
+    # Fetch applicants
+    cur = conn.cursor()
+    # cur.execute("SELECT * FROM applications WHERE job_id = %s", (job_id,))
+    cur.execute(
+        "SELECT u.*, a.* FROM applications a JOIN users u ON a.user_id = u.user_id WHERE a.job_id = %s AND u.role_id = 1 ORDER BY a.created_at ASC LIMIT 50",
+        (job_id,),
+    )
+    applicants = cur.fetchall()
+
+    if not applicants:
+        await context.bot.send_message(
+            chat_id=query.from_user.id,
+            text="No applicants yet",
+            parse_mode="HTML",
+        )
+        return
+
+    applicants_list = [job for job in applicants]
+    global current_applicant_index
+    applicant = applicants_list[current_applicant_index]
+    global total_applicants
+    total_applicants = len(applicants_list)
+    # current_applicant_index = 0  # Reset index when starting
+
+    applicant_details = (
+        f"Name: <b>\t{applicant[4]}</b> \n"
+        f"Email: <b>\t{applicant[7]}</b> \n"
+        f"Phone: <b>\t{applicant[8]}</b> \n\n"
+        f"<b>Cover Letter:</b> \n{applicant[25]} \n\n"
+        f"<b>CV:</b> \n{applicant[26]} \n\n"
+        f"<b>Portfolio:</b> \n{applicant[27]} \n\n"
+    )
+
+    keyboard = [[InlineKeyboardButton("Back to My Jobs", callback_data="my_job_posts")]]
+    if total_applicants > 1:
+        if current_applicant_index > 0:
+            keyboard = [
+                [
+                    InlineKeyboardButton(
+                        "Previous", callback_data="applicant_previous"
+                    ),
+                    InlineKeyboardButton("Next", callback_data="applicant_next"),
+                ],
+                [InlineKeyboardButton("Back to My Jobs", callback_data="my_job_posts")],
+            ]
+            if total_applicants == current_applicant_index + 1:
+                keyboard = [
+                    [
+                        InlineKeyboardButton(
+                            "Previous", callback_data="applicant_previous"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "Back to My Jobs", callback_data="my_job_posts"
+                        )
+                    ],
+                ]
+        else:
+            keyboard = [
+                [InlineKeyboardButton("Next", callback_data="applicant_next")],
+                [InlineKeyboardButton("Back to My Jobs", callback_data="my_job_posts")],
+            ]
+
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            text=applicant_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+    else:
+        await update.message.reply_text(
+            text=applicant_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+
+
+async def next_applicant(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global current_applicant_index
+    query = update.callback_query
+    await query.answer()  # Acknowledge the callback
+
+    if query.data == "applicant_next":
+        current_applicant_index += 1
+    elif query.data == "applicant_previous":
+        current_applicant_index -= 1
+
+    await view_applicants(update, context)
 
 
 async def my_companies(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -922,7 +1032,7 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "<b>Post a Job</b> - find the right candidates for you \n\n"
         "<b>My Job posts</b> - view & manage your job posts \n\n"
         "<b>My Companies</b> - add & manage your companies \n\n"
-        "<b>Notifications</b> - customize notifications you wanna receive \n\n"
+        # "<b>Notifications</b> - customize notifications you wanna receive \n\n"
         "<b>My Profile</b> - manage your profile \n\n"
         "<b>Help</b> - show help message \n\n",
         parse_mode="HTML",
@@ -1694,7 +1804,7 @@ async def job_deadline(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
 
 
-async def vacancies(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def job_vacancies(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         vacancies = update.message.text.strip()
 
@@ -2623,9 +2733,6 @@ def get_all_cities():
 # * DEBUG (will be extracted to a separate debug.py file)
 async def capture_group_topics(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print("capturing group topics...")
-    """
-        Capture topics (message_thread_id) from messages in a forum group.
-    """
     print(f"\n update.message: {update.message} \n")
     # if update.message and update.message.is_topic_message:
     #     topic_name = update.message.forum_topic_created.name
@@ -2679,7 +2786,7 @@ post_job_handler = ConversationHandler(
         EXPERIENCE_LEVEL: [CallbackQueryHandler(experience_level)],
         GENDER_PREFERENCE: [CallbackQueryHandler(gender_preference)],
         JOB_DEADLINE: [MessageHandler(filters.TEXT & ~filters.COMMAND, job_deadline)],
-        VACANCIES: [MessageHandler(filters.TEXT & ~filters.COMMAND, vacancies)],
+        VACANCIES: [MessageHandler(filters.TEXT & ~filters.COMMAND, job_vacancies)],
         JOB_DESCRIPTION: [
             MessageHandler(filters.TEXT & ~filters.COMMAND, job_description)
         ],
@@ -2755,9 +2862,14 @@ def main():
     # app.add_handler(MessageHandler(filters.ALL, capture_group_topics))
 
     # Callback Query Handlers
+    app.add_handler(
+        CallbackQueryHandler(view_applicants, pattern="^view_applicants_.*")
+    )
+    app.add_handler(CallbackQueryHandler(next_applicant, pattern="^applicant_.*"))
     app.add_handler(CallbackQueryHandler(next_company, pattern="^company_.*"))
     app.add_handler(CallbackQueryHandler(next_myjob, pattern="^myjob_.*"))
 
+    app.add_handler(CallbackQueryHandler(my_job_posts, pattern="^my_job_posts$"))
     app.add_handler(CallbackQueryHandler(my_profile, pattern="^my_profile$"))
     app.add_handler(CallbackQueryHandler(edit_profile, pattern="^edit_profile$"))
     app.add_handler(CallbackQueryHandler(done_profile, pattern="^done_profile$"))
