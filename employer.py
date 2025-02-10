@@ -529,8 +529,10 @@ async def my_companies(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if current_company_index > 0:
             keyboard = [
                 [
-                    InlineKeyboardButton("Previous", callback_data="company_previous"),
-                    InlineKeyboardButton("Next", callback_data="company_next"),
+                    InlineKeyboardButton(
+                        "Previous", callback_data="mycompany_previous"
+                    ),
+                    InlineKeyboardButton("Next", callback_data="mycompany_next"),
                 ],
                 [InlineKeyboardButton("Add Company", callback_data="create_company")],
             ]
@@ -538,7 +540,7 @@ async def my_companies(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 keyboard = [
                     [
                         InlineKeyboardButton(
-                            "Previous", callback_data="company_previous"
+                            "Previous", callback_data="mycompany_previous"
                         ),
                     ],
                     [
@@ -549,7 +551,7 @@ async def my_companies(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ]
         else:
             keyboard = [
-                [InlineKeyboardButton("Next", callback_data="company_next")],
+                [InlineKeyboardButton("Next", callback_data="mycompany_next")],
                 [InlineKeyboardButton("Add Company", callback_data="create_company")],
             ]
 
@@ -567,14 +569,14 @@ async def my_companies(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-async def next_company(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def next_mycompany(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global current_company_index
     query = update.callback_query
     await query.answer()  # Acknowledge the callback
 
-    if query.data == "company_next":
+    if query.data == "mycompany_next":
         current_company_index += 1
-    elif query.data == "company_previous":
+    elif query.data == "mycompany_previous":
         current_company_index -= 1
 
     await my_companies(update, context)
@@ -2866,7 +2868,7 @@ def main():
         CallbackQueryHandler(view_applicants, pattern="^view_applicants_.*")
     )
     app.add_handler(CallbackQueryHandler(next_applicant, pattern="^applicant_.*"))
-    app.add_handler(CallbackQueryHandler(next_company, pattern="^company_.*"))
+    app.add_handler(CallbackQueryHandler(next_mycompany, pattern="^mycompany_.*"))
     app.add_handler(CallbackQueryHandler(next_myjob, pattern="^myjob_.*"))
 
     app.add_handler(CallbackQueryHandler(my_job_posts, pattern="^my_job_posts$"))

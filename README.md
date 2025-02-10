@@ -20,7 +20,7 @@ Telegram bot that allows recruiters to post jobs and job seekers to browse & app
   - [ ] Add datepicker package for job posting
   - [ ] Add awesome data display package
   - [ ] Add conventional price range picker package
-- [ ] Integrate Redis (for blazingly fast experience) - No one is patient
+- [ ] Integrate Redis (for blazingly fast experience) - `No one is patient enough to wait for the bot to respond`
 - [ ] Add more features
 - [ ] Add more documentation
 
@@ -29,6 +29,10 @@ Telegram bot that allows recruiters to post jobs and job seekers to browse & app
 - [ ] Consistency: should you use fullstops for your users? | Should you use a fullstops for the last sentence?
 
 ## Fixes
+
+### High Priority
+
+- [ ] change the cursor type to RealDictCursor and access the fields using their name
 
 ### Helpers
 

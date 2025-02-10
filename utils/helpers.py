@@ -1,12 +1,11 @@
+import os
 import re
 import json
 from typing import Any
 
-from telegram import (
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import (
     ContextTypes,
-    Update,
 )
 from utils.constants import (
     CITIES,

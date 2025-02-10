@@ -4,6 +4,7 @@ import json
 import logging
 from datetime import datetime
 import psycopg2
+from psycopg2.extras import RealDictCursor
 from telegram import (
     Update,
     InlineKeyboardMarkup,
@@ -19,6 +20,10 @@ from telegram.ext import (
     ApplicationBuilder,
     ContextTypes,
 )
+
+from ai import cover_letter_generator, cover_letter_generator_one
+
+# test as AITest
 
 # from config import HUGGINGFACE_MODEL
 # from utils.cover_letter import CoverLetterGenerator
@@ -1267,12 +1272,39 @@ async def skip_cover_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def generate_cover_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text="Great! give me some details. \n\nWhat is the job title you're applying for?",
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute(
+        "SELECT j.*, c.* FROM jobs j JOIN companies c ON j.company_id = c.company_id WHERE job_id = %s",
+        (context.user_data["job_id"],),
+    )
+    job = cur.fetchone()
+
+    job_title = job["job_title"]
+    company_name = job["name"]
+    job_description = job["job_description"]
+    skills = "react, vue, node, mongodb, python, laravel, javascript, typescript"
+    experience = "4 years"
+
+    letter = cover_letter_generator_one(
+        job_title, company_name, job_description, skills, experience
+    )
+
+    keyboard = [
+        [
+            InlineKeyboardButton("Accept", callback_data="accept_cover_letter"),
+            InlineKeyboardButton("Decline", callback_data="decline_cover_letter"),
+        ],
+        [
+            InlineKeyboardButton("Write", callback_data="write_cover_letter"),
+            InlineKeyboardButton("Regenerate", callback_data="regenerate_cover_letter"),
+        ],
+    ]
+
+    await update.callback_query.edit_message_text(
+        f"<b>Here's your draft:</b> \n\n {letter}",
+        reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="HTML",
     )
-    return GENERATE_JOB_TITLE
 
 
 async def collect_job_title(update: Update, context: ContextTypes.DEFAULT_TYPE):

@@ -7,6 +7,7 @@ pymongo
 # psycopg2
 pytest-mock
 transformers
+sentencepiece
 pytest-asyncio
 psycopg2-binary
 pylint[spelling]
