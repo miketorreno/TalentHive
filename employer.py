@@ -1,17 +1,15 @@
 import os
 import re
 import logging
+from datetime import datetime
 import psycopg2
-from datetime import date, datetime
 from telegram import (
     Update,
     InlineKeyboardMarkup,
     InlineKeyboardButton,
     ReplyKeyboardMarkup,
-    ReplyKeyboardRemove,
 )
 from telegram.ext import (
-    Updater,
     CommandHandler,
     CallbackQueryHandler,
     ConversationHandler,
@@ -84,7 +82,17 @@ conn = psycopg2.connect(
     SALARY_CURRENCY,
     SKILLS_EXPERTISE,
     CONFIRM_JOB,
-) = range(39)
+    CHOOSE_FIELD,
+    EDIT_NAME,
+    EDIT_USERNAME,
+    EDIT_GENDER,
+    EDIT_DOB,
+    EDIT_COUNTRY,
+    EDIT_CITY,
+    EDIT_EMAIL,
+    EDIT_PHONE,
+    EDIT_DONE,
+) = range(49)
 
 # List of cities sorted alphabetically
 CITIES = sorted(
@@ -162,6 +170,13 @@ CITIES = sorted(
     ]
 )
 
+current_myjob_index = 0
+total_myjobs = 0
+current_company_index = 0
+total_companies = 0
+current_applicant_index = 0
+total_applicants = 0
+
 GROUP_TOPIC_New_Company_Created_ID = 67
 GROUP_TOPIC_New_Employer_Registration_ID = 17
 
@@ -218,7 +233,7 @@ async def main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # await update.message.reply_text("Post a job")
     # await post_a_job(update, context)
     if choice == "my job posts":
-        await my_jobs(update, context)
+        await my_job_posts(update, context)
     elif choice == "my companies":
         await my_companies(update, context)
     elif choice == "notifications":
@@ -256,6 +271,216 @@ async def my_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(message, parse_mode="Markdown")
 
 
+async def my_job_posts(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """List all companies owned by the user."""
+    user = get_user(update, context)
+
+    if not user:
+        await start(update, context)
+        return
+
+    # Fetch companies
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM jobs WHERE user_id = %s", (user[0],))
+    myjobs = cur.fetchall()
+
+    if not myjobs:
+        keyboard = [[InlineKeyboardButton("Post a Job", callback_data="post_a_job")]]
+        if update.callback_query:
+            await update.callback_query.edit_message_text(
+                "You haven't posted a job yet"
+            )
+        else:
+            await update.message.reply_text("You haven't posted a job yet")
+        return
+
+    myjobs_list = [job for job in myjobs]
+    global current_myjob_index
+    myjob = myjobs_list[current_myjob_index]
+    global total_myjobs
+    total_myjobs = len(myjobs_list)
+    # current_myjob_index = 0  # Reset index when starting
+
+    myjob_details = (
+        f"Job Title: <b>\t{myjob[4]}</b> \n\n"
+        f"Job Type: <b>\t{myjob[6]} - {myjob[5]}</b> \n\n"
+        f"Work Location: <b>\t{myjob[15]}, {myjob[16]}</b> \n\n"
+        f"Salary: <b>\t{myjob[17]}</b> \n\n"
+        f"Deadline: <b>\t{format_date(myjob[11])}</b> \n\n"
+        f"<b>Description</b>: \n{myjob[13]} \n\n"
+        f"<b>Requirements</b>: \n{myjob[14]} \n\n"
+    )
+
+    keyboard = []
+    if total_myjobs > 1:
+        if current_myjob_index > 0:
+            keyboard = [
+                [
+                    InlineKeyboardButton("Previous", callback_data="myjob_previous"),
+                    InlineKeyboardButton("Next", callback_data="myjob_next"),
+                ],
+                [
+                    InlineKeyboardButton("Edit", callback_data="myjob_edit"),
+                    InlineKeyboardButton("Close", callback_data="myjob_close"),
+                ],
+                [
+                    InlineKeyboardButton(
+                        "View Applicants", callback_data=f"view_applicants_{myjob[0]}"
+                    )
+                ],
+            ]
+            if total_myjobs == current_myjob_index + 1:
+                keyboard = [
+                    [InlineKeyboardButton("Previous", callback_data="myjob_previous")],
+                    [
+                        InlineKeyboardButton("Edit", callback_data="myjob_edit"),
+                        InlineKeyboardButton("Close", callback_data="myjob_close"),
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "View Applicants",
+                            callback_data=f"view_applicants_{myjob[0]}",
+                        )
+                    ],
+                ]
+        else:
+            keyboard = [
+                [InlineKeyboardButton("Next", callback_data="myjob_next")],
+                [
+                    InlineKeyboardButton("Edit", callback_data="myjob_edit"),
+                    InlineKeyboardButton("Close", callback_data="myjob_close"),
+                ],
+                [
+                    InlineKeyboardButton(
+                        "View Applicants", callback_data=f"view_applicants_{myjob[0]}"
+                    )
+                ],
+            ]
+
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            text=myjob_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+    else:
+        await update.message.reply_text(
+            text=myjob_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+
+
+async def next_myjob(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global current_myjob_index
+    query = update.callback_query
+    await query.answer()  # Acknowledge the callback
+
+    if query.data == "myjob_next":
+        current_myjob_index += 1
+    elif query.data == "myjob_previous":
+        current_myjob_index -= 1
+
+    await my_job_posts(update, context)
+
+
+async def view_applicants(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """List all companies owned by the user."""
+    query = update.callback_query
+    await query.answer()
+    job_id = int(query.data.split("_")[-1])
+
+    # Fetch applicants
+    cur = conn.cursor()
+    # cur.execute("SELECT * FROM applications WHERE job_id = %s", (job_id,))
+    cur.execute(
+        "SELECT u.*, a.* FROM applications a JOIN users u ON a.user_id = u.user_id WHERE a.job_id = %s AND u.role_id = 1 ORDER BY a.created_at ASC LIMIT 50",
+        (job_id,),
+    )
+    applicants = cur.fetchall()
+
+    if not applicants:
+        await context.bot.send_message(
+            chat_id=query.from_user.id,
+            text="No applicants yet",
+            parse_mode="HTML",
+        )
+        return
+
+    applicants_list = [job for job in applicants]
+    global current_applicant_index
+    applicant = applicants_list[current_applicant_index]
+    global total_applicants
+    total_applicants = len(applicants_list)
+    # current_applicant_index = 0  # Reset index when starting
+
+    applicant_details = (
+        f"Name: <b>\t{applicant[4]}</b> \n"
+        f"Email: <b>\t{applicant[7]}</b> \n"
+        f"Phone: <b>\t{applicant[8]}</b> \n\n"
+        f"<b>Cover Letter:</b> \n{applicant[25]} \n\n"
+        f"<b>CV:</b> \n{applicant[26]} \n\n"
+        f"<b>Portfolio:</b> \n{applicant[27]} \n\n"
+    )
+
+    keyboard = [[InlineKeyboardButton("Back to My Jobs", callback_data="my_job_posts")]]
+    if total_applicants > 1:
+        if current_applicant_index > 0:
+            keyboard = [
+                [
+                    InlineKeyboardButton(
+                        "Previous", callback_data="applicant_previous"
+                    ),
+                    InlineKeyboardButton("Next", callback_data="applicant_next"),
+                ],
+                [InlineKeyboardButton("Back to My Jobs", callback_data="my_job_posts")],
+            ]
+            if total_applicants == current_applicant_index + 1:
+                keyboard = [
+                    [
+                        InlineKeyboardButton(
+                            "Previous", callback_data="applicant_previous"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "Back to My Jobs", callback_data="my_job_posts"
+                        )
+                    ],
+                ]
+        else:
+            keyboard = [
+                [InlineKeyboardButton("Next", callback_data="applicant_next")],
+                [InlineKeyboardButton("Back to My Jobs", callback_data="my_job_posts")],
+            ]
+
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            text=applicant_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+    else:
+        await update.message.reply_text(
+            text=applicant_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+
+
+async def next_applicant(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global current_applicant_index
+    query = update.callback_query
+    await query.answer()  # Acknowledge the callback
+
+    if query.data == "applicant_next":
+        current_applicant_index += 1
+    elif query.data == "applicant_previous":
+        current_applicant_index -= 1
+
+    await view_applicants(update, context)
+
+
 async def my_companies(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """List all companies owned by the user."""
     user = get_user(update, context)
@@ -269,25 +494,92 @@ async def my_companies(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cur.execute("SELECT * FROM companies WHERE user_id = %s", (user[0],))
     companies = cur.fetchall()
 
-    keyboard = [
-        [InlineKeyboardButton("Add Company", callback_data="create_company")],
-    ]
-
     if not companies:
-        await update.message.reply_text(
-            "You haven't created any companies yet.",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-        )
+        keyboard = [
+            [InlineKeyboardButton("Add Company", callback_data="create_company")],
+        ]
+        if update.callback_query:
+            await update.callback_query.edit_message_text(
+                "You haven't created a company yet",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+            )
+        else:
+            await update.message.reply_text(
+                "You haven't created a company yet",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+            )
         return
 
-    # Format the list of companies
-    message = "**Your Companies:** \n\n"
-    for company in companies:
-        message += f"- **ID:** {company[0]}\n  **Name:** {company[4]}\n  **Description:** {company[7]}\n  **Approval status:** {company[8]}\n\n"
+    company_list = [job for job in companies]
+    global current_company_index
+    company = company_list[current_company_index]
+    global total_companies
+    total_companies = len(company_list)
+    # current_company_index = 0  # Reset index when starting
 
-    await update.message.reply_text(
-        text=message, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown"
+    company_details = (
+        f"Name: <b>\t{company[4]}{' \t✅' if company[9] else ''}</b> \n\n"
+        f"Description: <b>\t{company[7]}</b> \n\n"
+        f"Approval status: <b>\t{company[8]}</b> \n\n"
+        f"Verified: <b>\t{company[9]}</b> \n\n"
     )
+
+    keyboard = []
+    if total_companies > 1:
+        if current_company_index > 0:
+            keyboard = [
+                [
+                    InlineKeyboardButton(
+                        "Previous", callback_data="mycompany_previous"
+                    ),
+                    InlineKeyboardButton("Next", callback_data="mycompany_next"),
+                ],
+                [InlineKeyboardButton("Add Company", callback_data="create_company")],
+            ]
+            if total_companies == current_company_index + 1:
+                keyboard = [
+                    [
+                        InlineKeyboardButton(
+                            "Previous", callback_data="mycompany_previous"
+                        ),
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "Add Company", callback_data="create_company"
+                        )
+                    ],
+                ]
+        else:
+            keyboard = [
+                [InlineKeyboardButton("Next", callback_data="mycompany_next")],
+                [InlineKeyboardButton("Add Company", callback_data="create_company")],
+            ]
+
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            text=company_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+    else:
+        await update.message.reply_text(
+            text=company_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+
+
+async def next_mycompany(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global current_company_index
+    query = update.callback_query
+    await query.answer()  # Acknowledge the callback
+
+    if query.data == "mycompany_next":
+        current_company_index += 1
+    elif query.data == "mycompany_previous":
+        current_company_index -= 1
+
+    await my_companies(update, context)
 
 
 async def my_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -297,19 +589,438 @@ async def my_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await start(update, context)
         return
 
-    await update.message.reply_text(
-        text=f"<b>My Profile</b> \n\n"
-        f"<b>👤 \tName</b>: \t{user[3]} \n\n"
-        f"<b>👤 \tUsername</b>: \t{user[4]} \n\n"
-        f"<b>👤 \tGender</b>: \t{user[5]} \n\n"
-        f"<b>🎂 \tDate of Birth</b>: \t{user[6]} \n\n"
-        f"<b>🌐 \tCountry</b>: \t{user[9]} \n\n"
-        f"<b>🏙️ \tCity</b>: \t{user[10]} \n\n"
-        f"<b>📧 \tEmail</b>: \t{user[7]} \n\n"
-        f"<b>📞 \tPhone</b>: \t{user[8]} \n\n",
-        parse_mode="HTML",
+    keyboard = [[InlineKeyboardButton("Edit Profile", callback_data="edit_profile")]]
+
+    if update.callback_query:
+        query = update.callback_query
+        await query.edit_message_text(
+            text=f"<b>My Profile</b> \n\n"
+            f"<b>👤 \tName</b>: \t{(user[3].split()[0]).capitalize()} {(user[3].split()[1]).capitalize() if len(user[3].split()) > 1 else ''} \n\n"
+            f"<b>\t&#64; \t\tUsername</b>: \t{user[4]} \n\n"
+            f"<b>👫 \tGender</b>: \t{user[5]} \n\n"
+            f"<b>🎂 \tAge</b>: \t{user[6]} \n\n"
+            f"<b>🌐 \tCountry</b>: \t{user[9]} \n\n"
+            f"<b>🏙️ \tCity</b>: \t{user[10]} \n\n"
+            f"<b>📧 \tEmail</b>: \t{user[7]} \n\n"
+            f"<b>📞 \tPhone</b>: \t{user[8]} \n\n",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+    else:
+        await update.message.reply_text(
+            text=f"<b>My Profile</b> \n\n"
+            f"<b>👤 \tName</b>: \t{(user[3].split()[0]).capitalize()} {(user[3].split()[1]).capitalize() if len(user[3].split()) > 1 else ''} \n\n"
+            f"<b>\t&#64; \t\tUsername</b>: \t{user[4]} \n\n"
+            f"<b>👫 \tGender</b>: \t{user[5]} \n\n"
+            f"<b>🎂 \tAge</b>: \t{user[6]} \n\n"
+            f"<b>🌐 \tCountry</b>: \t{user[9]} \n\n"
+            f"<b>🏙️ \tCity</b>: \t{user[10]} \n\n"
+            f"<b>📧 \tEmail</b>: \t{user[7]} \n\n"
+            f"<b>📞 \tPhone</b>: \t{user[8]} \n\n",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+    return
+
+
+async def edit_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    keyboard = [
+        [
+            InlineKeyboardButton("Edit Name", callback_data="edit_name"),
+            InlineKeyboardButton("Update Username", callback_data="update_username"),
+        ],
+        [
+            InlineKeyboardButton("Edit Gender", callback_data="edit_gender"),
+            InlineKeyboardButton("Edit Age", callback_data="edit_dob"),
+        ],
+        [
+            InlineKeyboardButton("Edit Country", callback_data="edit_country"),
+            InlineKeyboardButton("Edit City", callback_data="edit_city"),
+        ],
+        [
+            InlineKeyboardButton("Edit Email", callback_data="edit_email"),
+            InlineKeyboardButton("Edit Phone", callback_data="edit_phone"),
+        ],
+        [InlineKeyboardButton("Done", callback_data="done_profile")],
+    ]
+
+    await query.edit_message_reply_markup(
+        reply_markup=InlineKeyboardMarkup(keyboard),
     )
     return
+
+
+async def choose_field(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    choice = query.data
+
+    if choice == "edit_name":
+        await context.bot.send_message(
+            chat_id=query.from_user.id,
+            text="Please enter your new name (First and Last) \n\n<i>* Type /cancel to abort editing</i>",
+            parse_mode="HTML",
+        )
+        return EDIT_NAME
+        # elif choice == 'edit_username':
+        # await context.bot.send_message(
+        #     chat_id=query.from_user.id,
+        #     text="<i>* Updating your username...</i>",
+        #     parse_mode="HTML",
+        # )
+        # return EDIT_USERNAME
+        # return edit_username(update, context)
+    elif choice == "edit_gender":
+        keyboard = [
+            [
+                InlineKeyboardButton("Male", callback_data="Male"),
+                InlineKeyboardButton("Female", callback_data="Female"),
+            ],
+        ]
+
+        await context.bot.send_message(
+            chat_id=query.from_user.id,
+            text="Please choose your gender \n\n<i>* Type /cancel to abort editing</i>",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+        return EDIT_GENDER
+    elif choice == "edit_dob":
+        await context.bot.send_message(
+            chat_id=query.from_user.id,
+            text="Please enter your age between 10 and 100 \n\n<i>* Type /cancel to abort editing</i>",
+            parse_mode="HTML",
+        )
+        return EDIT_DOB
+    elif choice == "edit_country":
+        keyboard = [[InlineKeyboardButton("Ethiopia", callback_data="Ethiopia")]]
+
+        await context.bot.send_message(
+            chat_id=query.from_user.id,
+            text="Please select your country \n\n<i>* Type /cancel to abort editing</i>",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+        return EDIT_COUNTRY
+    elif choice == "edit_city":
+        keyboard = get_all_cities()
+
+        await context.bot.send_message(
+            chat_id=query.from_user.id,
+            text="Please select your city \n\n<i>* Type /cancel to abort editing</i>",
+            reply_markup=keyboard,
+            parse_mode="HTML",
+        )
+        return EDIT_CITY
+    elif choice == "edit_email":
+        await context.bot.send_message(
+            chat_id=query.from_user.id,
+            text="Please enter your email address \n\n<i>* Type /cancel to abort editing</i>",
+            parse_mode="HTML",
+        )
+        return EDIT_EMAIL
+    elif choice == "edit_phone":
+        await context.bot.send_message(
+            chat_id=query.from_user.id,
+            text="Please enter your phone number \n\n<i>* Type /cancel to abort editing</i>",
+            parse_mode="HTML",
+        )
+        return EDIT_PHONE
+    else:
+        await context.bot.send_message(
+            chat_id=query.from_user.id,
+            text="Invalid choice, please select again",
+            parse_mode="HTML",
+        )
+        return CHOOSE_FIELD
+
+
+async def edit_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    name = update.message.text.strip()
+    telegram_id = update.effective_user.id
+
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE users SET name = %s WHERE telegram_id = %s AND role_id = 2",
+        (name, telegram_id),
+    )
+    conn.commit()
+
+    keyboard = [[InlineKeyboardButton("Back to Profile", callback_data="my_profile")]]
+
+    await update.message.reply_text(
+        text="Name updated successfully!",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="HTML",
+    )
+    return ConversationHandler.END
+
+
+async def update_username(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    telegram_id = update.effective_user.id
+    username = update.effective_user.username
+    query = update.callback_query
+    await query.answer()
+
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE users SET username = %s WHERE telegram_id = %s AND role_id = 2",
+        (username, telegram_id),
+    )
+    conn.commit()
+
+    keyboard = [[InlineKeyboardButton("Back to Profile", callback_data="my_profile")]]
+
+    await context.bot.send_message(
+        chat_id=query.from_user.id,
+        text="Username updated successfully!",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="HTML",
+    )
+    return ConversationHandler.END
+
+
+async def edit_gender(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        query = update.callback_query
+        await query.answer()
+        telegram_id = update.effective_user.id
+
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE users SET gender = %s WHERE telegram_id = %s AND role_id = 2",
+            (query.data, telegram_id),
+        )
+        conn.commit()
+
+        keyboard = [
+            [InlineKeyboardButton("Back to Profile", callback_data="my_profile")]
+        ]
+
+        await query.edit_message_text(
+            text="Gender updated successfully!",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+        return ConversationHandler.END
+    except Exception as e:
+        await query.edit_message_text(
+            "An error occurred while updating your gender. Please try again."
+        )
+        print(f"Error in edit_gender: {e}")
+        return ConversationHandler.END
+
+
+async def edit_dob(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        dob = update.message.text.strip()
+
+        if dob.isdigit():
+            # Check if the input is a number between 10 and 100
+            age = int(dob)
+            if 10 <= age <= 100:
+                keyboard = [
+                    [
+                        InlineKeyboardButton(
+                            "Back to Profile", callback_data="my_profile"
+                        )
+                    ]
+                ]
+
+                telegram_id = update.effective_user.id
+
+                cur = conn.cursor()
+                cur.execute(
+                    "UPDATE users SET dob = %s WHERE telegram_id = %s AND role_id = 2",
+                    (dob, telegram_id),
+                )
+                conn.commit()
+
+                await update.message.reply_text(
+                    text="Age updated successfully!",
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode="HTML",
+                )
+                return ConversationHandler.END
+            else:
+                await update.message.reply_text(
+                    "<i>* Age out of range</i>\n\nPlease enter your age between 10 and 100 \n\n<i>* Type /cancel to abort editing</i>",
+                    parse_mode="HTML",
+                )
+                return EDIT_DOB
+        else:
+            await update.message.reply_text(
+                "<i>* Invalid age.</i>\n\nPlease enter your age between 10 and 100 \n\n<i>* Type /cancel to abort editing</i>",
+                parse_mode="HTML",
+            )
+            return EDIT_DOB
+    except Exception as e:
+        await update.message.reply_text(
+            "An error occurred while updating your age. Please try again."
+        )
+        print(f"Error in edit_dob: {e}")
+        return ConversationHandler.END
+
+
+async def edit_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        query = update.callback_query
+        await query.answer()
+        telegram_id = update.effective_user.id
+
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE users SET country = %s WHERE telegram_id = %s AND role_id = 2",
+            (query.data, telegram_id),
+        )
+        conn.commit()
+
+        keyboard = [
+            [InlineKeyboardButton("Back to Profile", callback_data="my_profile")]
+        ]
+
+        await query.edit_message_text(
+            text="Country updated successfully!",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+        return ConversationHandler.END
+    except Exception as e:
+        await query.edit_message_text(
+            "An error occurred while updating your country. Please try again."
+        )
+        print(f"Error in edit_country: {e}")
+        return ConversationHandler.END
+
+
+async def edit_city(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        query = update.callback_query
+        await query.answer()
+        telegram_id = update.effective_user.id
+
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE users SET city = %s WHERE telegram_id = %s AND role_id = 2",
+            (query.data, telegram_id),
+        )
+        conn.commit()
+
+        keyboard = [
+            [InlineKeyboardButton("Back to Profile", callback_data="my_profile")]
+        ]
+
+        await query.edit_message_text(
+            text="City updated successfully!",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+        return ConversationHandler.END
+    except Exception as e:
+        await update.effective_message.reply_text(
+            "An error occurred while saving your city. Please try again."
+        )
+        print(f"Error in edit_city: {e}")
+        return ConversationHandler.END
+
+
+async def edit_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        email = update.message.text.strip()
+        telegram_id = update.effective_user.id
+
+        if not is_valid_email(email):
+            await update.message.reply_text(
+                "<i>* Invalid email format.</i>\n\nPlease enter your email address \n\n<i>* Type /cancel to abort editing</i>",
+                parse_mode="HTML",
+            )
+            return EDIT_EMAIL
+
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE users SET email = %s WHERE telegram_id = %s AND role_id = 2",
+            (email, telegram_id),
+        )
+        conn.commit()
+
+        keyboard = [
+            [InlineKeyboardButton("Back to Profile", callback_data="my_profile")]
+        ]
+
+        await update.message.reply_text(
+            text="Email updated successfully!",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+        return ConversationHandler.END
+    except Exception as e:
+        await update.message.reply_text(
+            "An error occurred while updating your email address. Please try again."
+        )
+        print(f"Error in edit_email: {e}")
+        return ConversationHandler.END
+
+
+async def edit_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        phone = update.message.text.strip()
+        telegram_id = update.effective_user.id
+
+        if not phone.isdigit() or len(phone) < 9:  # Basic validation for phone numbers
+            await update.message.reply_text(
+                "<i>* Invalid phone number.</i>\n\nPlease enter your phone number \n\n<i>* Type /cancel to abort editing</i>",
+                parse_mode="HTML",
+            )
+            return EDIT_PHONE
+
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE users SET phone = %s WHERE telegram_id = %s AND role_id = 2",
+            (phone, telegram_id),
+        )
+        conn.commit()
+
+        keyboard = [
+            [InlineKeyboardButton("Back to Profile", callback_data="my_profile")]
+        ]
+
+        await update.message.reply_text(
+            text="Email updated successfully!",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+        return ConversationHandler.END
+    except Exception as e:
+        await update.message.reply_text(
+            "An error occurred while updating your phone number. Please try again."
+        )
+        print(f"Error in edit_phone: {e}")
+        return ConversationHandler.END
+
+
+async def done_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    keyboard = [[InlineKeyboardButton("Edit Profile", callback_data="edit_profile")]]
+
+    await query.edit_message_reply_markup(
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+    return
+
+
+async def cancel_edit_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [[InlineKeyboardButton("Back to Profile", callback_data="my_profile")]]
+
+    await update.message.reply_text(
+        "Profile update canceled.",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+    return ConversationHandler.END
 
 
 # TODO: postponed
@@ -323,7 +1034,7 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "<b>Post a Job</b> - find the right candidates for you \n\n"
         "<b>My Job posts</b> - view & manage your job posts \n\n"
         "<b>My Companies</b> - add & manage your companies \n\n"
-        "<b>Notifications</b> - customize notifications you wanna receive \n\n"
+        # "<b>Notifications</b> - customize notifications you wanna receive \n\n"
         "<b>My Profile</b> - manage your profile \n\n"
         "<b>Help</b> - show help message \n\n",
         parse_mode="HTML",
@@ -1095,7 +1806,7 @@ async def job_deadline(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
 
 
-async def vacancies(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def job_vacancies(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         vacancies = update.message.text.strip()
 
@@ -2024,9 +2735,6 @@ def get_all_cities():
 # * DEBUG (will be extracted to a separate debug.py file)
 async def capture_group_topics(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print("capturing group topics...")
-    """
-        Capture topics (message_thread_id) from messages in a forum group.
-    """
     print(f"\n update.message: {update.message} \n")
     # if update.message and update.message.is_topic_message:
     #     topic_name = update.message.forum_topic_created.name
@@ -2080,7 +2788,7 @@ post_job_handler = ConversationHandler(
         EXPERIENCE_LEVEL: [CallbackQueryHandler(experience_level)],
         GENDER_PREFERENCE: [CallbackQueryHandler(gender_preference)],
         JOB_DEADLINE: [MessageHandler(filters.TEXT & ~filters.COMMAND, job_deadline)],
-        VACANCIES: [MessageHandler(filters.TEXT & ~filters.COMMAND, vacancies)],
+        VACANCIES: [MessageHandler(filters.TEXT & ~filters.COMMAND, job_vacancies)],
         JOB_DESCRIPTION: [
             MessageHandler(filters.TEXT & ~filters.COMMAND, job_description)
         ],
@@ -2103,6 +2811,22 @@ post_job_handler = ConversationHandler(
         ],
     },
     fallbacks=[CommandHandler("cancel", cancel_job)],
+)
+
+profile_handler = ConversationHandler(
+    entry_points=[CallbackQueryHandler(choose_field, pattern="^edit_.*")],
+    states={
+        CHOOSE_FIELD: [CallbackQueryHandler(choose_field, pattern="^edit_.*")],
+        EDIT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_name)],
+        # EDIT_USERNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_username)],
+        EDIT_GENDER: [CallbackQueryHandler(edit_gender)],
+        EDIT_DOB: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_dob)],
+        EDIT_COUNTRY: [CallbackQueryHandler(edit_country)],
+        EDIT_CITY: [CallbackQueryHandler(edit_city)],
+        EDIT_EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_email)],
+        EDIT_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_phone)],
+    },
+    fallbacks=[CommandHandler("cancel", cancel_edit_profile)],
 )
 
 
@@ -2141,18 +2865,36 @@ def main():
 
     # Callback Query Handlers
     app.add_handler(
+        CallbackQueryHandler(view_applicants, pattern="^view_applicants_.*")
+    )
+    app.add_handler(CallbackQueryHandler(next_applicant, pattern="^applicant_.*"))
+    app.add_handler(CallbackQueryHandler(next_mycompany, pattern="^mycompany_.*"))
+    app.add_handler(CallbackQueryHandler(next_myjob, pattern="^myjob_.*"))
+
+    app.add_handler(CallbackQueryHandler(my_job_posts, pattern="^my_job_posts$"))
+    app.add_handler(CallbackQueryHandler(my_profile, pattern="^my_profile$"))
+    app.add_handler(CallbackQueryHandler(edit_profile, pattern="^edit_profile$"))
+    app.add_handler(CallbackQueryHandler(done_profile, pattern="^done_profile$"))
+    app.add_handler(CallbackQueryHandler(update_username, pattern="^update_username$"))
+    app.add_handler(
         CallbackQueryHandler(view_employer_profile, pattern="^view_employer_.*")
     )
 
     app.add_handler(post_job_handler)
     app.add_handler(company_creation_handler)
+    app.add_handler(profile_handler)
     app.add_handler(onboarding_handler)
 
     # main menu handler (general)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, main_menu))
 
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help))
     app.add_handler(CommandHandler("cancel", cancel))
+    # app.add_handler(CommandHandler("post_a_job", post_a_job))
+    app.add_handler(CommandHandler("my_job_posts", my_job_posts))
+    app.add_handler(CommandHandler("my_profile", my_profile))
+    app.add_handler(CommandHandler("my_companies", my_companies))
 
     print("Bot is running...")
     app.run_polling(timeout=60)

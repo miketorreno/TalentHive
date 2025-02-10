@@ -1,20 +1,17 @@
 import os
 import re
-import sys
 import json
-import signal
 import logging
+from datetime import datetime
 import psycopg2
-from datetime import date, datetime
+from psycopg2.extras import RealDictCursor
 from telegram import (
     Update,
     InlineKeyboardMarkup,
     InlineKeyboardButton,
     ReplyKeyboardMarkup,
-    ReplyKeyboardRemove,
 )
 from telegram.ext import (
-    Updater,
     CommandHandler,
     CallbackQueryHandler,
     ConversationHandler,
@@ -24,8 +21,12 @@ from telegram.ext import (
     ContextTypes,
 )
 
-from config import HUGGINGFACE_MODEL
-from utils.cover_letter import CoverLetterGenerator
+from ai import cover_letter_generator, cover_letter_generator_one
+
+# test as AITest
+
+# from config import HUGGINGFACE_MODEL
+# from utils.cover_letter import CoverLetterGenerator
 
 # cover_letter_gen = CoverLetterGenerator(HUGGINGFACE_MODEL)
 
@@ -842,7 +843,7 @@ async def edit_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     cur = conn.cursor()
     cur.execute(
-        f"UPDATE users SET name = %s WHERE telegram_id = %s AND role_id = 1",
+        "UPDATE users SET name = %s WHERE telegram_id = %s AND role_id = 1",
         (name, telegram_id),
     )
     conn.commit()
@@ -865,7 +866,7 @@ async def update_username(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     cur = conn.cursor()
     cur.execute(
-        f"UPDATE users SET username = %s WHERE telegram_id = %s AND role_id = 1",
+        "UPDATE users SET username = %s WHERE telegram_id = %s AND role_id = 1",
         (username, telegram_id),
     )
     conn.commit()
@@ -889,7 +890,7 @@ async def edit_gender(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         cur = conn.cursor()
         cur.execute(
-            f"UPDATE users SET gender = %s WHERE telegram_id = %s AND role_id = 1",
+            "UPDATE users SET gender = %s WHERE telegram_id = %s AND role_id = 1",
             (query.data, telegram_id),
         )
         conn.commit()
@@ -932,7 +933,7 @@ async def edit_dob(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 cur = conn.cursor()
                 cur.execute(
-                    f"UPDATE users SET dob = %s WHERE telegram_id = %s AND role_id = 1",
+                    "UPDATE users SET dob = %s WHERE telegram_id = %s AND role_id = 1",
                     (dob, telegram_id),
                 )
                 conn.commit()
@@ -971,7 +972,7 @@ async def edit_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         cur = conn.cursor()
         cur.execute(
-            f"UPDATE users SET country = %s WHERE telegram_id = %s AND role_id = 1",
+            "UPDATE users SET country = %s WHERE telegram_id = %s AND role_id = 1",
             (query.data, telegram_id),
         )
         conn.commit()
@@ -1002,7 +1003,7 @@ async def edit_city(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         cur = conn.cursor()
         cur.execute(
-            f"UPDATE users SET city = %s WHERE telegram_id = %s AND role_id = 1",
+            "UPDATE users SET city = %s WHERE telegram_id = %s AND role_id = 1",
             (query.data, telegram_id),
         )
         conn.commit()
@@ -1039,7 +1040,7 @@ async def edit_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         cur = conn.cursor()
         cur.execute(
-            f"UPDATE users SET email = %s WHERE telegram_id = %s AND role_id = 1",
+            "UPDATE users SET email = %s WHERE telegram_id = %s AND role_id = 1",
             (email, telegram_id),
         )
         conn.commit()
@@ -1076,7 +1077,7 @@ async def edit_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         cur = conn.cursor()
         cur.execute(
-            f"UPDATE users SET phone = %s WHERE telegram_id = %s AND role_id = 1",
+            "UPDATE users SET phone = %s WHERE telegram_id = %s AND role_id = 1",
             (phone, telegram_id),
         )
         conn.commit()
@@ -1271,12 +1272,39 @@ async def skip_cover_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def generate_cover_letter(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text="Great! give me some details. \n\nWhat is the job title you're applying for?",
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute(
+        "SELECT j.*, c.* FROM jobs j JOIN companies c ON j.company_id = c.company_id WHERE job_id = %s",
+        (context.user_data["job_id"],),
+    )
+    job = cur.fetchone()
+
+    job_title = job["job_title"]
+    company_name = job["name"]
+    job_description = job["job_description"]
+    skills = "react, vue, node, mongodb, python, laravel, javascript, typescript"
+    experience = "4 years"
+
+    letter = cover_letter_generator_one(
+        job_title, company_name, job_description, skills, experience
+    )
+
+    keyboard = [
+        [
+            InlineKeyboardButton("Accept", callback_data="accept_cover_letter"),
+            InlineKeyboardButton("Decline", callback_data="decline_cover_letter"),
+        ],
+        [
+            InlineKeyboardButton("Write", callback_data="write_cover_letter"),
+            InlineKeyboardButton("Regenerate", callback_data="regenerate_cover_letter"),
+        ],
+    ]
+
+    await update.callback_query.edit_message_text(
+        f"<b>Here's your draft:</b> \n\n {letter}",
+        reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="HTML",
     )
-    return GENERATE_JOB_TITLE
 
 
 async def collect_job_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1524,7 +1552,7 @@ async def onboarding_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text=f"Please enter your first name",
+            text="Please enter your first name",
             parse_mode="HTML",
         )
         return REGISTER_FIRSTNAME
@@ -1852,7 +1880,7 @@ async def confirm_registration(update: Update, context: ContextTypes.DEFAULT_TYP
                 return ConversationHandler.END
 
             await query.edit_message_text(
-                f"Registered successfully \t 🎉",
+                "Registered successfully \t 🎉",
                 # f"Registered successfully \t 🎉 \n\nWelcome to HulumJobs <b>{user_data['firstname'].capitalize()}</b>!",
                 parse_mode="HTML",
             )
