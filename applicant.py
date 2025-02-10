@@ -842,7 +842,7 @@ async def edit_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     cur = conn.cursor()
     cur.execute(
-        f"UPDATE users SET name = %s WHERE telegram_id = %s AND role_id = 1",
+        "UPDATE users SET name = %s WHERE telegram_id = %s AND role_id = 1",
         (name, telegram_id),
     )
     conn.commit()
@@ -865,7 +865,7 @@ async def update_username(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     cur = conn.cursor()
     cur.execute(
-        f"UPDATE users SET username = %s WHERE telegram_id = %s AND role_id = 1",
+        "UPDATE users SET username = %s WHERE telegram_id = %s AND role_id = 1",
         (username, telegram_id),
     )
     conn.commit()
@@ -889,7 +889,7 @@ async def edit_gender(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         cur = conn.cursor()
         cur.execute(
-            f"UPDATE users SET gender = %s WHERE telegram_id = %s AND role_id = 1",
+            "UPDATE users SET gender = %s WHERE telegram_id = %s AND role_id = 1",
             (query.data, telegram_id),
         )
         conn.commit()
@@ -932,7 +932,7 @@ async def edit_dob(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 cur = conn.cursor()
                 cur.execute(
-                    f"UPDATE users SET dob = %s WHERE telegram_id = %s AND role_id = 1",
+                    "UPDATE users SET dob = %s WHERE telegram_id = %s AND role_id = 1",
                     (dob, telegram_id),
                 )
                 conn.commit()
@@ -971,7 +971,7 @@ async def edit_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         cur = conn.cursor()
         cur.execute(
-            f"UPDATE users SET country = %s WHERE telegram_id = %s AND role_id = 1",
+            "UPDATE users SET country = %s WHERE telegram_id = %s AND role_id = 1",
             (query.data, telegram_id),
         )
         conn.commit()
@@ -1002,7 +1002,7 @@ async def edit_city(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         cur = conn.cursor()
         cur.execute(
-            f"UPDATE users SET city = %s WHERE telegram_id = %s AND role_id = 1",
+            "UPDATE users SET city = %s WHERE telegram_id = %s AND role_id = 1",
             (query.data, telegram_id),
         )
         conn.commit()
@@ -1039,7 +1039,7 @@ async def edit_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         cur = conn.cursor()
         cur.execute(
-            f"UPDATE users SET email = %s WHERE telegram_id = %s AND role_id = 1",
+            "UPDATE users SET email = %s WHERE telegram_id = %s AND role_id = 1",
             (email, telegram_id),
         )
         conn.commit()
@@ -1076,7 +1076,7 @@ async def edit_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         cur = conn.cursor()
         cur.execute(
-            f"UPDATE users SET phone = %s WHERE telegram_id = %s AND role_id = 1",
+            "UPDATE users SET phone = %s WHERE telegram_id = %s AND role_id = 1",
             (phone, telegram_id),
         )
         conn.commit()
