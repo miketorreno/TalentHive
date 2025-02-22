@@ -10,7 +10,7 @@ from telegram.ext import (
     MessageHandler,
 )
 
-from applicants.handlers.general import start
+from applicants.handlers.general import start_command
 from applicants.states.all import (
     CHOOSE_FIELD,
     EDIT_CITY,
@@ -22,7 +22,7 @@ from applicants.states.all import (
     EDIT_PHONE,
     EDIT_USERNAME,
 )
-from utils.db import execute_query
+from utils.db import execute_query, redis_client
 from utils.helpers import get_all_cities, get_applicant, is_valid_email
 
 
@@ -36,43 +36,38 @@ async def applicant_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     applicant = get_applicant(update)
 
     if not applicant:
-        await start(update, context)
+        await start_command(update, context)
         return
 
     keyboard = [[InlineKeyboardButton("Edit Profile", callback_data="edit_profile")]]
+    profile_info = (
+        f"<b>My Profile</b> \n\n"
+        f"<b>👤 \tName</b>: \t{(applicant["name"].split()[0]).capitalize()} {(applicant["name"].split()[1]).capitalize() if len(applicant["name"].split()) > 1 else ''} \n\n"
+        f"<b>\t&#64; \t\tUsername</b>: \t{applicant["username"]} \n\n"
+        f"<b>👫 \tGender</b>: \t{applicant["gender"]} \n\n"
+        f"<b>🎂 \tAge</b>: \t{applicant["dob"]} \n\n"
+        f"<b>🌐 \tCountry</b>: \t{applicant["country"]} \n\n"
+        f"<b>🏙️ \tCity</b>: \t{applicant["city"]} \n\n"
+        f"<b>📧 \tEmail</b>: \t{applicant["email"]} \n\n"
+        f"<b>📞 \tPhone</b>: \t{applicant["phone"]} \n\n"
+    )
 
     if update.callback_query:
         query = update.callback_query
         await query.edit_message_text(
-            text=f"<b>My Profile</b> \n\n"
-            f"<b>👤 \tName</b>: \t{(applicant[3].split()[0]).capitalize()} {(applicant[3].split()[1]).capitalize() if len(applicant[3].split()) > 1 else ''} \n\n"
-            f"<b>\t&#64; \t\tUsername</b>: \t{applicant[4]} \n\n"
-            f"<b>👫 \tGender</b>: \t{applicant[5]} \n\n"
-            f"<b>🎂 \tAge</b>: \t{applicant[6]} \n\n"
-            f"<b>🌐 \tCountry</b>: \t{applicant[9]} \n\n"
-            f"<b>🏙️ \tCity</b>: \t{applicant[10]} \n\n"
-            f"<b>📧 \tEmail</b>: \t{applicant[7]} \n\n"
-            f"<b>📞 \tPhone</b>: \t{applicant[8]} \n\n",
+            text=profile_info,
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode="HTML",
         )
     else:
         await update.message.reply_text(
-            text=f"<b>My Profile</b> \n\n"
-            f"<b>👤 \tName</b>: \t{(applicant[3].split()[0]).capitalize()} {(applicant[3].split()[1]).capitalize() if len(applicant[3].split()) > 1 else ''} \n\n"
-            f"<b>\t&#64; \t\tUsername</b>: \t{applicant[4]} \n\n"
-            f"<b>👫 \tGender</b>: \t{applicant[5]} \n\n"
-            f"<b>🎂 \tAge</b>: \t{applicant[6]} \n\n"
-            f"<b>🌐 \tCountry</b>: \t{applicant[9]} \n\n"
-            f"<b>🏙️ \tCity</b>: \t{applicant[10]} \n\n"
-            f"<b>📧 \tEmail</b>: \t{applicant[7]} \n\n"
-            f"<b>📞 \tPhone</b>: \t{applicant[8]} \n\n",
+            text=profile_info,
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode="HTML",
         )
 
 
-async def edit_profile(update: Update) -> None:
+async def edit_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     Handles the 'Edit Profile' button and displays inline buttons to edit each profile field.
     When the user clicks on the 'Edit Profile' button, this function is called, and it edits the message with the inline buttons.
@@ -106,7 +101,7 @@ async def edit_profile(update: Update) -> None:
     )
 
 
-async def done_profile(update: Update) -> None:
+async def done_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     Handles the completion of the profile editing process.
 
@@ -128,7 +123,7 @@ async def done_profile(update: Update) -> None:
     )
 
 
-async def cancel_profile(update: Update) -> int:
+async def cancel_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
     Handles user cancellation of the profile editing process.
 
@@ -258,7 +253,7 @@ async def choose_field(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     return next_state
 
 
-async def edit_name(update: Update) -> int:
+async def edit_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
     Updates the user's name in the database based on the input provided in the update message.
 
@@ -280,7 +275,8 @@ async def edit_name(update: Update) -> int:
         "UPDATE users SET name = %s WHERE telegram_id = %s AND role_id = 1",
         (name, telegram_id),
     )
-    print(f" === \n response : {response} \n ===")
+    redis_client.delete(f"applicant:{telegram_id}")
+    print(f"\n === \n response : {response} \n === \n")
 
     keyboard = [
         [InlineKeyboardButton("Back to Profile", callback_data="applicant_profile")]
@@ -319,7 +315,8 @@ async def update_username(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         "UPDATE users SET username = %s WHERE telegram_id = %s AND role_id = 1",
         (username, telegram_id),
     )
-    print(f" === \n response : {response} \n ===")
+    redis_client.delete(f"applicant:{telegram_id}")
+    print(f"\n === \n response : {response} \n === \n")
 
     keyboard = [
         [InlineKeyboardButton("Back to Profile", callback_data="applicant_profile")]
@@ -334,7 +331,7 @@ async def update_username(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     return ConversationHandler.END
 
 
-async def edit_gender(update: Update) -> int:
+async def edit_gender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
     Updates the user's gender in the database based on the callback data provided in the update object.
 
@@ -358,7 +355,8 @@ async def edit_gender(update: Update) -> int:
             "UPDATE users SET gender = %s WHERE telegram_id = %s AND role_id = 1",
             (query.data, telegram_id),
         )
-        print(f" === \n response : {response} \n ===")
+        redis_client.delete(f"applicant:{telegram_id}")
+        print(f"\n === \n response : {response} \n === \n")
 
         keyboard = [
             [InlineKeyboardButton("Back to Profile", callback_data="applicant_profile")]
@@ -390,7 +388,7 @@ async def edit_gender(update: Update) -> int:
         return ConversationHandler.END
 
 
-async def edit_dob(update: Update) -> int:
+async def edit_dob(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
     Updates the user's date of birth (age) in the database based on the input provided in the update message.
 
@@ -426,7 +424,8 @@ async def edit_dob(update: Update) -> int:
                     "UPDATE users SET dob = %s WHERE telegram_id = %s AND role_id = 1",
                     (dob, telegram_id),
                 )
-                print(f" === \n response : {response} \n ===")
+                redis_client.delete(f"applicant:{telegram_id}")
+                print(f"\n === \n response : {response} \n === \n")
 
                 await update.message.reply_text(
                     text="Age updated successfully!",
@@ -454,7 +453,7 @@ async def edit_dob(update: Update) -> int:
         return ConversationHandler.END
 
 
-async def edit_country(update: Update) -> int:
+async def edit_country(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
     Updates the user's country in the database based on the callback data provided in the update object.
 
@@ -478,7 +477,8 @@ async def edit_country(update: Update) -> int:
             "UPDATE users SET country = %s WHERE telegram_id = %s AND role_id = 1",
             (query.data, telegram_id),
         )
-        print(f" === \n response : {response} \n ===")
+        redis_client.delete(f"applicant:{telegram_id}")
+        print(f"\n === \n response : {response} \n === \n")
 
         keyboard = [
             [InlineKeyboardButton("Back to Profile", callback_data="applicant_profile")]
@@ -498,7 +498,7 @@ async def edit_country(update: Update) -> int:
         return ConversationHandler.END
 
 
-async def edit_city(update: Update) -> int:
+async def edit_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
     Updates the user's city in the database based on the callback data provided in the update object.
 
@@ -522,7 +522,8 @@ async def edit_city(update: Update) -> int:
             "UPDATE users SET city = %s WHERE telegram_id = %s AND role_id = 1",
             (query.data, telegram_id),
         )
-        print(f" === \n response : {response} \n ===")
+        redis_client.delete(f"applicant:{telegram_id}")
+        print(f"\n === \n response : {response} \n === \n")
 
         keyboard = [
             [InlineKeyboardButton("Back to Profile", callback_data="applicant_profile")]
@@ -542,7 +543,7 @@ async def edit_city(update: Update) -> int:
         return ConversationHandler.END
 
 
-async def edit_email(update: Update) -> int:
+async def edit_email(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
     Updates the user's email in the database based on the input provided in the update message.
 
@@ -573,7 +574,8 @@ async def edit_email(update: Update) -> int:
             "UPDATE users SET email = %s WHERE telegram_id = %s AND role_id = 1",
             (email, telegram_id),
         )
-        print(f" === \n response : {response} \n ===")
+        redis_client.delete(f"applicant:{telegram_id}")
+        print(f"\n === \n response : {response} \n === \n")
 
         keyboard = [
             [InlineKeyboardButton("Back to Profile", callback_data="applicant_profile")]
@@ -593,7 +595,7 @@ async def edit_email(update: Update) -> int:
         return ConversationHandler.END
 
 
-async def edit_phone(update: Update) -> int:
+async def edit_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
     Updates the user's phone number in the database based on the input provided in the update message.
 
@@ -624,7 +626,8 @@ async def edit_phone(update: Update) -> int:
             "UPDATE users SET phone = %s WHERE telegram_id = %s AND role_id = 1",
             (phone, telegram_id),
         )
-        print(f" === \n response : {response} \n ===")
+        redis_client.delete(f"applicant:{telegram_id}")
+        print(f"\n === \n response : {response} \n === \n")
 
         keyboard = [
             [InlineKeyboardButton("Back to Profile", callback_data="applicant_profile")]

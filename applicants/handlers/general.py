@@ -11,7 +11,9 @@ from applicants.states.all import REGISTER
 from utils.helpers import get_applicant
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int | None:
+async def start_command(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int | None:
     """
     Handles the initial interaction with the user when they start the bot.
 
@@ -45,6 +47,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int | Non
     args = context.args
     if args and args[0].startswith("apply_"):
         job_id = args[0].split("_")[1]
+        print(job_id)
         # await show_job(update, context, job_id)
     else:
         keyboard = [
@@ -54,7 +57,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int | Non
             ["Help"],
         ]
         await update.message.reply_text(
-            text=f"<b>Hello {(applicant[3].split()[0]).capitalize()} 👋\t Welcome to HulumJobs!</b> \n\n"
+            text=f"<b>Hello {(applicant['name'].split()[0]).capitalize()} 👋\t Welcome to HulumJobs!</b> \n\n"
             "<b>💼 \tBrowse Jobs</b>:\t find jobs that best fit your schedule \n\n"
             "<b>📌 \tSaved Jobs</b>:\t your saved jobs \n\n"
             "<b>👤 \tMy Profile</b>:\t manage your profile \n\n"
@@ -66,7 +69,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int | Non
         )
 
 
-async def help_command(update: Update) -> None:
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     Shows the help message for the bot.
 
@@ -92,7 +95,7 @@ async def help_command(update: Update) -> None:
     return
 
 
-async def cancel(update: Update) -> int:
+async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
     Cancel the conversation and sends a goodbye message.
     """

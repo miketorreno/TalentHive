@@ -30,7 +30,7 @@ from utils.db import execute_query
 from utils.helpers import get_all_cities, is_valid_email
 
 
-async def onboarding_start(update: Update) -> int:
+async def onboarding_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
     Starts the onboarding process.
 
@@ -181,6 +181,37 @@ async def register_email(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             "An error occurred while saving your email address. Please try again."
         )
         print(f"Error in register_email: {e}")
+        return ConversationHandler.END
+
+
+async def register_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        phone = update.message.text.strip()
+
+        if not phone.isdigit() or len(phone) < 9:  # Basic validation for phone numbers
+            await update.message.reply_text(
+                "<i>* Invalid phone number.</i>\n\nPlease enter your phone number",
+                parse_mode="HTML",
+            )
+            return REGISTER_PHONE
+
+        context.user_data["phone"] = phone
+        keyboard = [
+            [
+                InlineKeyboardButton("Male", callback_data="Male"),
+                InlineKeyboardButton("Female", callback_data="Female"),
+            ],
+            [InlineKeyboardButton("Skip", callback_data="skip")],
+        ]
+        await update.message.reply_text(
+            "Please choose your gender", reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return REGISTER_GENDER
+    except Exception as e:
+        await update.message.reply_text(
+            "An error occurred while saving your phone number. Please try again."
+        )
+        print(f"Error in register_phone: {e}")
         return ConversationHandler.END
 
 
@@ -414,7 +445,7 @@ async def confirm_registration(update: Update, context: ContextTypes.DEFAULT_TYP
             )
 
             # Notify the group about the new registration
-            await notify_group_on_registration(update, context, user_data)
+            # await notify_group_on_registration(update, context, user_data)
 
             # return REGISTER_COMPLETE
             # await update.message.reply_text("/start")
@@ -432,7 +463,7 @@ async def confirm_registration(update: Update, context: ContextTypes.DEFAULT_TYP
         return ConversationHandler.END
 
 
-async def onboarding_cancel(update: Update) -> int:
+async def onboarding_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
     Cancels the onboarding process and sends a message to the user.
 

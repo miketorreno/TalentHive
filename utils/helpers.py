@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import datetime
 from typing import Any
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -34,22 +35,22 @@ def get_applicant(
     """
 
     telegram_id = update.effective_user.id
-    redis_client.delete(telegram_id)
-    cached_applicant = redis_client.get(telegram_id)
+    # redis_client.delete(f"applicant:{telegram_id}")
+    cached_applicant = redis_client.get(f"applicant:{telegram_id}")
 
     if not cached_applicant:
-        print(" === \n Cache miss! \n ===")
+        print("\n === \n Cache miss! \n === \n")
         applicant = execute_query(
             # "SELECT user_id, telegram_id, role_id, first_name FROM users WHERE telegram_id = %s AND role_id = %s",
-            "SELECT * FROM users WHERE telegram_id = %s AND role_id = %s",
+            "SELECT user_id, telegram_id, role_id, name, username, email, phone, gender, dob, country, city, education, experience, cv, skills, portfolios, subscribed_alerts, preferences FROM users WHERE telegram_id = %s AND role_id = %s",
             (telegram_id, ROLE_APPLICANT),
         )
-        if isinstance(applicant) == list:
-            redis_client.set(telegram_id, json.dumps(applicant[0]), ex=3600)
+        if isinstance(applicant, list):
             applicant = applicant[0]
+            redis_client.set(f"applicant:{telegram_id}", json.dumps(applicant), ex=3600)
     else:
-        print(" === \n Cache hit! \n ===")
-        applicant = list(json.loads(cached_applicant))
+        print("\n === \n Cache hit! \n === \n")
+        applicant = json.loads(cached_applicant)
 
     if not applicant:
         return None
@@ -129,3 +130,9 @@ def is_valid_email(email):
     """
     pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     return bool(re.match(pattern, email))
+
+
+def convert_datetime(obj):
+    if isinstance(obj, datetime.datetime):
+        return obj.isoformat()  # or obj.strftime('%Y-%m-%d %H:%M:%S') for a d/t format
+    raise TypeError("Type not serializable")

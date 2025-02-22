@@ -1,9 +1,18 @@
 import os
 import logging
-from telegram.ext import CommandHandler, ApplicationBuilder
+from telegram.ext import CommandHandler, ApplicationBuilder, CallbackQueryHandler
+from telegram.error import TelegramError
 
-from applicants.handlers.profile import applicant_profile, profile_handler
-from applicants.handlers.general import start, cancel, help_command
+from applicant import view_jobseeker_profile
+from applicants.handlers.general import cancel_command, help_command, start_command
+from applicants.handlers.profile import (
+    applicant_profile,
+    done_profile,
+    edit_profile,
+    update_username,
+    profile_handler,
+)
+
 
 # Logging
 logging.basicConfig(
@@ -36,7 +45,7 @@ TOTAL_APPLICATIONS = 0
 #     elif choice == "saved jobs":
 #         await saved_jobs(update, context)
 #     elif choice == "my profile":
-#         await my_profile(update, context)
+#         await applicant_profile(update, context)
 #     elif choice == "my applications":
 #         await my_applications(update, context)
 #     elif choice == "job notifications":
@@ -48,7 +57,12 @@ TOTAL_APPLICATIONS = 0
 
 
 def main() -> None:
-    app = ApplicationBuilder().token(os.getenv("APPLICANT_BOT_TOKEN")).build()
+    token = os.getenv("APPLICANT_BOT_TOKEN")
+    if not token:
+        logger.error("APPLICANT_BOT_TOKEN environment variable is not set.")
+        raise ValueError("APPLICANT_BOT_TOKEN environment variable is not set.")
+
+    app = ApplicationBuilder().token(token).build()
 
     # * For DEBUG purposes ONLY
     # app.add_handler(MessageHandler(filters.ALL, capture_group_topics))
@@ -59,11 +73,15 @@ def main() -> None:
     # app.add_handler(CallbackQueryHandler(next_job, pattern="^job_.*"))
     # app.add_handler(CallbackQueryHandler(next_application, pattern="^application_.*"))
 
-    # app.add_handler(CallbackQueryHandler(my_profile, pattern="^my_profile$"))
-    # app.add_handler(CallbackQueryHandler(edit_profile, pattern="^edit_profile$"))
-    # app.add_handler(CallbackQueryHandler(done_profile, pattern="^done_profile$"))
-    # app.add_handler(CallbackQueryHandler(update_username, pattern="^update_username$"))
-    # app.add_handler(CallbackQueryHandler(view_jobseeker_profile, pattern="^view_jobseeker_.*"))
+    app.add_handler(
+        CallbackQueryHandler(applicant_profile, pattern="^applicant_profile$")
+    )
+    app.add_handler(CallbackQueryHandler(edit_profile, pattern="^edit_profile$"))
+    app.add_handler(CallbackQueryHandler(done_profile, pattern="^done_profile$"))
+    app.add_handler(CallbackQueryHandler(update_username, pattern="^update_username$"))
+    app.add_handler(
+        CallbackQueryHandler(view_jobseeker_profile, pattern="^view_jobseeker_.*")
+    )
 
     # app.add_handler(CallbackQueryHandler(edit_name, pattern="^edit_name$"))
 
@@ -75,16 +93,25 @@ def main() -> None:
     # app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, main_menu))
 
     # * command handlers
-    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(CommandHandler("cancel", cancel))
+    app.add_handler(CommandHandler("cancel", cancel_command))
     app.add_handler(CommandHandler("my_profile", applicant_profile))
     # app.add_handler(CommandHandler('browse_jobs', browse_jobs))
     # app.add_handler(CommandHandler('saved_jobs', saved_jobs))
     # app.add_handler(CommandHandler('my_applications', my_applications))
 
-    print("Bot is running...")
-    app.run_polling(timeout=60)
+    logger.info("Applicant Bot running...")
+    try:
+        app.run_polling(timeout=60)
+    except TimeoutError as e:
+        logger.error("Timeout error occurred: %s", e)
+    except ConnectionError as e:
+        logger.error("Connection error occurred: %s", e)
+    except TelegramError as e:
+        logger.error("Telegram error occurred: %s", e)
+    except Exception as e:
+        logger.error("A general error occurred: %s", e)
 
 
 if __name__ == "__main__":
