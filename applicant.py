@@ -21,6 +21,9 @@ from telegram.ext import (
     ContextTypes,
 )
 
+from GROUP_TOPIC_New_JobSeeker_Registration_ID import (
+    GROUP_TOPIC_New_JobSeeker_Registration_ID,
+)
 from ai import cover_letter_generator, cover_letter_generator_one
 
 # test as AITest
@@ -177,8 +180,6 @@ current_application_index = 0
 total_applications = 0
 current_savedjob_index = 0
 total_savedjobs = 0
-
-GROUP_TOPIC_New_JobSeeker_Registration_ID = 14
 
 
 # Start

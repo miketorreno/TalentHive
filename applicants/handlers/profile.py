@@ -33,7 +33,7 @@ async def applicant_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     Otherwise, send a new message with the applicant's profile.
     If the applicant is not found, start the conversation with the start handler.
     """
-    applicant = get_applicant(update)
+    applicant = get_applicant(update, context)
 
     if not applicant:
         await start_command(update, context)

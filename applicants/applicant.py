@@ -1,6 +1,14 @@
 import os
 import logging
-from telegram.ext import CommandHandler, ApplicationBuilder, CallbackQueryHandler
+from telegram import Update
+from telegram.ext import (
+    filters,
+    CommandHandler,
+    ApplicationBuilder,
+    CallbackQueryHandler,
+    ContextTypes,
+    MessageHandler,
+)
 from telegram.error import TelegramError
 
 from applicant import view_jobseeker_profile
@@ -12,6 +20,7 @@ from applicants.handlers.profile import (
     update_username,
     profile_handler,
 )
+from utils.helpers import get_applicant
 
 
 # Logging
@@ -31,29 +40,29 @@ CURRENT_APPLICATION_INDEX = 0
 TOTAL_APPLICATIONS = 0
 
 
-# async def main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-#     choice = update.message.text
-#     choice = choice.lower()
-#     user = get_user(update, context)
+async def main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    choice = update.message.text
+    choice = choice.lower()
+    applicant = get_applicant(update, context)
 
-#     if not user:
-#         await start(update, context)
-#         return
+    if not applicant:
+        await start_command(update, context)
+        return
 
-#     if choice == "browse jobs":
-#         await browse_jobs(update, context)
-#     elif choice == "saved jobs":
-#         await saved_jobs(update, context)
-#     elif choice == "my profile":
-#         await applicant_profile(update, context)
-#     elif choice == "my applications":
-#         await my_applications(update, context)
-#     elif choice == "job notifications":
-#         await job_notifications(update, context)
-#     elif choice == "help":
-#         await help(update, context)
-#     else:
-#         await update.message.reply_text("Please use the buttons below to navigate.")
+    #     if choice == "browse jobs":
+    #         await browse_jobs(update, context)
+    #     elif choice == "saved jobs":
+    #         await saved_jobs(update, context)
+    elif choice == "my profile":
+        await applicant_profile(update, context)
+    #     elif choice == "my applications":
+    #         await my_applications(update, context)
+    #     elif choice == "job notifications":
+    #         await job_notifications(update, context)
+    #     elif choice == "help":
+    #         await help(update, context)
+    else:
+        await update.message.reply_text("Please use the buttons below to navigate.")
 
 
 def main() -> None:
@@ -90,7 +99,7 @@ def main() -> None:
     # app.add_handler(onboarding_handler)
 
     # * main menu handler (general)
-    # app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, main_menu))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, main_menu))
 
     # * command handlers
     app.add_handler(CommandHandler("start", start_command))

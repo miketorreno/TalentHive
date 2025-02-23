@@ -31,7 +31,7 @@ async def start_command(
         return value as the function interacts with the user via messages.
     """
 
-    applicant = get_applicant(update)
+    applicant = get_applicant(update, context)
 
     if not applicant:
         keyboard = [[InlineKeyboardButton("Register", callback_data="register")]]

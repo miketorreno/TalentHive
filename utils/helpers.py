@@ -17,7 +17,7 @@ from utils.db import execute_query, redis_client
 
 
 def get_applicant(
-    update: Update,
+    update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> tuple[Any, ...] | list[tuple[Any, ...]] | list[Any] | None:
     """
     Retrieve an applicant's information based on their Telegram ID. The function first attempts
@@ -130,6 +130,10 @@ def is_valid_email(email):
     """
     pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     return bool(re.match(pattern, email))
+
+
+def format_date(date):
+    return date.strftime("%B %d, %Y")
 
 
 def convert_datetime(obj):
