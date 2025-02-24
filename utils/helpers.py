@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import json
@@ -12,8 +13,11 @@ from utils.constants import (
     CITIES,
     ROLE_APPLICANT,
     GROUP_TOPIC_NEW_APPLICANT_REGISTRATION_ID,
+    ROLE_EMPLOYER,
 )
 from utils.db import execute_query, redis_client
+
+logger = logging.getLogger(__name__)
 
 
 def get_applicant(
@@ -39,23 +43,63 @@ def get_applicant(
     cached_applicant = redis_client.get(f"applicant:{telegram_id}")
 
     if not cached_applicant:
-        print("\n === \n Cache miss! \n === \n")
+        logger.info("Cache miss!")
         applicant = execute_query(
             "SELECT user_id, telegram_id, role_id, name, username, email, phone, gender, dob, country, city, education, experience, cv, skills, portfolios, subscribed_alerts, preferences FROM users WHERE telegram_id = %s AND role_id = %s",
             (telegram_id, ROLE_APPLICANT),
         )
-        print(f" === \n response : {applicant} \n ===")
         if isinstance(applicant, list) and len(applicant) > 0:
             applicant = applicant[0]
             redis_client.set(f"applicant:{telegram_id}", json.dumps(applicant), ex=3600)
     else:
-        print("\n === \n Cache hit! \n === \n")
+        logger.info("Cache hit!")
         applicant = json.loads(cached_applicant)
 
     if not applicant:
         return None
 
     return applicant
+
+
+def get_employer(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> tuple[Any, ...] | list[tuple[Any, ...]] | list[Any] | None:
+    """
+    Retrieve an employer's information based on their Telegram ID. The function first attempts
+    to get the employer's data from the cache. If not found in the cache (cache miss), it queries
+    the database for the user details and caches the result. The cached data is set with an
+    expiration time of one hour. Returns a tuple or list containing the user's details, or None
+    if the user is not found.
+
+    Args:
+        update (Update): The update object containing the effective user details.
+
+    Returns:
+        tuple[Any, ...] | list[tuple[Any, ...]] | list[Any] | None: The user's details or None
+        if the user does not exist in the database.
+    """
+
+    telegram_id = update.effective_user.id
+    # redis_client.delete(f"applicant:{telegram_id}")
+    cached_employer = redis_client.get(f"employer:{telegram_id}")
+
+    if not cached_employer:
+        logger.info("Cache miss!")
+        employer = execute_query(
+            "SELECT user_id, telegram_id, role_id, name, username, email, phone, gender, dob, country, city, education, experience, cv, skills, portfolios, subscribed_alerts, preferences FROM users WHERE telegram_id = %s AND role_id = %s",
+            (telegram_id, ROLE_EMPLOYER),
+        )
+        if isinstance(employer, list) and len(employer) > 0:
+            employer = employer[0]
+            redis_client.set(f"employer:{telegram_id}", json.dumps(employer), ex=3600)
+    else:
+        logger.info("Cache hit!")
+        employer = json.loads(cached_employer)
+
+    if not employer:
+        return None
+
+    return employer
 
 
 # def register_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -123,6 +167,10 @@ def get_job(job_id) -> list[tuple[Any, ...]] | None:
     """
 
     job = execute_query("SELECT * FROM jobs WHERE job_id = %s", (job_id,))
+
+    if not job:
+        return None
+
     return job[0]
 
 

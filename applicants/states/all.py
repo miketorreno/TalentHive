@@ -1,4 +1,4 @@
-# Define states
+# States
 (
     REGISTER,
     REGISTER_NAME,

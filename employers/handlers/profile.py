@@ -10,8 +10,8 @@ from telegram.ext import (
     MessageHandler,
 )
 
-from applicants.handlers.general import start_command
-from applicants.states.all import (
+from employers.handlers.general import start_command
+from employers.states.all import (
     CHOOSE_FIELD,
     EDIT_CITY,
     EDIT_COUNTRY,
@@ -22,35 +22,29 @@ from applicants.states.all import (
     EDIT_PHONE,
     EDIT_USERNAME,
 )
-from utils.constants import ROLE_APPLICANT
+from utils.constants import ROLE_EMPLOYER
 from utils.db import execute_query, redis_client
-from utils.helpers import get_all_cities, get_applicant, is_valid_email
+from utils.helpers import get_all_cities, get_employer, is_valid_email
 
 
-async def applicant_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """
-    Display the applicant's profile information and provide an inline button to edit it.
-    If the message is a callback query, edit the message with the applicant's profile.
-    Otherwise, send a new message with the applicant's profile.
-    If the applicant is not found, start the conversation with the start handler.
-    """
-    applicant = get_applicant(update, context)
+async def employer_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    employer = get_employer(update, context)
 
-    if not applicant:
+    if not employer:
         await start_command(update, context)
         return
 
     keyboard = [[InlineKeyboardButton("Edit Profile", callback_data="edit_profile")]]
     profile_info = (
         f"<b>My Profile</b> \n\n"
-        f"<b>👤 \tName</b>: \t{(applicant["name"].split()[0]).capitalize()} {(applicant["name"].split()[1]).capitalize() if len(applicant["name"].split()) > 1 else ''} \n\n"
-        f"<b>\t&#64; \t\tUsername</b>: \t{applicant["username"]} \n\n"
-        f"<b>👫 \tGender</b>: \t{applicant["gender"]} \n\n"
-        f"<b>🎂 \tAge</b>: \t{applicant["dob"]} \n\n"
-        f"<b>🌐 \tCountry</b>: \t{applicant["country"]} \n\n"
-        f"<b>🏙️ \tCity</b>: \t{applicant["city"]} \n\n"
-        f"<b>📧 \tEmail</b>: \t{applicant["email"]} \n\n"
-        f"<b>📞 \tPhone</b>: \t{applicant["phone"]} \n\n"
+        f"<b>👤 \tName</b>: \t{(employer["name"].split()[0]).capitalize()} {(employer["name"].split()[1]).capitalize() if len(employer["name"].split()) > 1 else ''} \n\n"
+        f"<b>\t&#64; \t\tUsername</b>: \t{employer["username"]} \n\n"
+        f"<b>👫 \tGender</b>: \t{employer["gender"]} \n\n"
+        f"<b>🎂 \tAge</b>: \t{employer["dob"]} \n\n"
+        f"<b>🌐 \tCountry</b>: \t{employer["country"]} \n\n"
+        f"<b>🏙️ \tCity</b>: \t{employer["city"]} \n\n"
+        f"<b>📧 \tEmail</b>: \t{employer["email"]} \n\n"
+        f"<b>📞 \tPhone</b>: \t{employer["phone"]} \n\n"
     )
 
     if update.callback_query:
@@ -140,7 +134,7 @@ async def cancel_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     """
 
     keyboard = [
-        [InlineKeyboardButton("Back to Profile", callback_data="applicant_profile")]
+        [InlineKeyboardButton("Back to Profile", callback_data="employer_profile")]
     ]
 
     await update.message.reply_text(
@@ -274,12 +268,12 @@ async def edit_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     response = execute_query(
         "UPDATE users SET name = %s WHERE telegram_id = %s AND role_id = %s",
-        (name, telegram_id, ROLE_APPLICANT),
+        (name, telegram_id, ROLE_EMPLOYER),
     )
-    redis_client.delete(f"applicant:{telegram_id}")
+    redis_client.delete(f"employer:{telegram_id}")
 
     keyboard = [
-        [InlineKeyboardButton("Back to Profile", callback_data="applicant_profile")]
+        [InlineKeyboardButton("Back to Profile", callback_data="employer_profile")]
     ]
 
     await update.message.reply_text(
@@ -313,12 +307,12 @@ async def update_username(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     response = execute_query(
         "UPDATE users SET username = %s WHERE telegram_id = %s AND role_id = %s",
-        (username, telegram_id, ROLE_APPLICANT),
+        (username, telegram_id, ROLE_EMPLOYER),
     )
-    redis_client.delete(f"applicant:{telegram_id}")
+    redis_client.delete(f"employer:{telegram_id}")
 
     keyboard = [
-        [InlineKeyboardButton("Back to Profile", callback_data="applicant_profile")]
+        [InlineKeyboardButton("Back to Profile", callback_data="employer_profile")]
     ]
 
     await context.bot.send_message(
@@ -352,12 +346,12 @@ async def edit_gender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
         response = execute_query(
             "UPDATE users SET gender = %s WHERE telegram_id = %s AND role_id = %s",
-            (query.data, telegram_id, ROLE_APPLICANT),
+            (query.data, telegram_id, ROLE_EMPLOYER),
         )
-        redis_client.delete(f"applicant:{telegram_id}")
+        redis_client.delete(f"employer:{telegram_id}")
 
         keyboard = [
-            [InlineKeyboardButton("Back to Profile", callback_data="applicant_profile")]
+            [InlineKeyboardButton("Back to Profile", callback_data="employer_profile")]
         ]
 
         await query.edit_message_text(
@@ -411,7 +405,7 @@ async def edit_dob(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 keyboard = [
                     [
                         InlineKeyboardButton(
-                            "Back to Profile", callback_data="applicant_profile"
+                            "Back to Profile", callback_data="employer_profile"
                         )
                     ]
                 ]
@@ -420,9 +414,9 @@ async def edit_dob(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
                 response = execute_query(
                     "UPDATE users SET dob = %s WHERE telegram_id = %s AND role_id = %s",
-                    (dob, telegram_id, ROLE_APPLICANT),
+                    (dob, telegram_id, ROLE_EMPLOYER),
                 )
-                redis_client.delete(f"applicant:{telegram_id}")
+                redis_client.delete(f"employer:{telegram_id}")
 
                 await update.message.reply_text(
                     text="Age updated successfully!",
@@ -472,12 +466,12 @@ async def edit_country(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
         response = execute_query(
             "UPDATE users SET country = %s WHERE telegram_id = %s AND role_id = %s",
-            (query.data, telegram_id, ROLE_APPLICANT),
+            (query.data, telegram_id, ROLE_EMPLOYER),
         )
-        redis_client.delete(f"applicant:{telegram_id}")
+        redis_client.delete(f"employer:{telegram_id}")
 
         keyboard = [
-            [InlineKeyboardButton("Back to Profile", callback_data="applicant_profile")]
+            [InlineKeyboardButton("Back to Profile", callback_data="employer_profile")]
         ]
 
         await query.edit_message_text(
@@ -516,12 +510,12 @@ async def edit_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
         response = execute_query(
             "UPDATE users SET city = %s WHERE telegram_id = %s AND role_id = %s",
-            (query.data, telegram_id, ROLE_APPLICANT),
+            (query.data, telegram_id, ROLE_EMPLOYER),
         )
-        redis_client.delete(f"applicant:{telegram_id}")
+        redis_client.delete(f"employer:{telegram_id}")
 
         keyboard = [
-            [InlineKeyboardButton("Back to Profile", callback_data="applicant_profile")]
+            [InlineKeyboardButton("Back to Profile", callback_data="employer_profile")]
         ]
 
         await query.edit_message_text(
@@ -567,12 +561,12 @@ async def edit_email(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
         response = execute_query(
             "UPDATE users SET email = %s WHERE telegram_id = %s AND role_id = %s",
-            (email, telegram_id, ROLE_APPLICANT),
+            (email, telegram_id, ROLE_EMPLOYER),
         )
-        redis_client.delete(f"applicant:{telegram_id}")
+        redis_client.delete(f"employer:{telegram_id}")
 
         keyboard = [
-            [InlineKeyboardButton("Back to Profile", callback_data="applicant_profile")]
+            [InlineKeyboardButton("Back to Profile", callback_data="employer_profile")]
         ]
 
         await update.message.reply_text(
@@ -618,12 +612,12 @@ async def edit_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
         response = execute_query(
             "UPDATE users SET phone = %s WHERE telegram_id = %s AND role_id = %s",
-            (phone, telegram_id, ROLE_APPLICANT),
+            (phone, telegram_id, ROLE_EMPLOYER),
         )
-        redis_client.delete(f"applicant:{telegram_id}")
+        redis_client.delete(f"employer:{telegram_id}")
 
         keyboard = [
-            [InlineKeyboardButton("Back to Profile", callback_data="applicant_profile")]
+            [InlineKeyboardButton("Back to Profile", callback_data="employer_profile")]
         ]
 
         await update.message.reply_text(

@@ -14,7 +14,7 @@ from telegram.ext import (
     CallbackQueryHandler,
     MessageHandler,
 )
-from applicants.states.all import (
+from employers.states.all import (
     REGISTER,
     CONFIRMATION,
     REGISTER_CITY,
@@ -26,7 +26,7 @@ from applicants.states.all import (
     REGISTER_GENDER,
     REGISTER_COUNTRY,
 )
-from utils.constants import ROLE_APPLICANT
+from utils.constants import ROLE_EMPLOYER
 from utils.db import execute_query
 from utils.helpers import get_all_cities, is_valid_email
 
@@ -404,7 +404,7 @@ async def confirm_registration(update: Update, context: ContextTypes.DEFAULT_TYP
                 "INSERT INTO users (telegram_id, role_id, name, username, email, phone, gender, dob, country, city) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (
                     user_data["telegram_id"],
-                    ROLE_APPLICANT,
+                    ROLE_EMPLOYER,
                     f"{user_data['firstname']} {user_data['lastname']}",
                     username,
                     user_data["email"],
@@ -426,19 +426,20 @@ async def confirm_registration(update: Update, context: ContextTypes.DEFAULT_TYP
             # await start_command(update, context)
 
             keyboard = [
-                ["Browse Jobs", "Saved Jobs"],
-                ["My Profile", "My Applications"],
-                # ["Job Notifications", "Help"]
+                ["Post a Job", "My Job Posts"],
+                ["My Profile", "My Companies"],
                 ["Help"],
+                # ["My Companies", "Notifications"],
+                # ["My Profile", "Help"],
             ]
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
                 text=f"<b>Hello {user_data['firstname'].capitalize()} 👋\t Welcome to HulumJobs!</b> \n\n"
-                "<b>💼 \tBrowse Jobs</b>:\t find jobs that best fit your schedule \n\n"
-                "<b>📌 \tSaved Jobs</b>:\t your saved jobs \n\n"
+                "<b>🔊 \tPost a Job</b>:\t find the right candidates for you \n\n"
+                "<b>📑 \tMy Job posts</b>:\t view & manage your job posts \n\n"
+                "<b>🏢 \tMy Companies</b>:\t add & manage your companies \n\n"
+                # "<b>🔔 \tNotifications</b>:\t customize notifications you wanna receive \n\n"
                 "<b>👤 \tMy Profile</b>:\t manage your profile \n\n"
-                "<b>📑 \tMy Applications</b>:\t view and track your applications \n\n"
-                # "<b>🔔 \tJob Notifications</b>:\t customize notifications you wanna receive \n\n"
                 "<b>❓ \tHelp</b>:\t show help message \n\n",
                 reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True),
                 parse_mode="HTML",
