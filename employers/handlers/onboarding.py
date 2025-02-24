@@ -14,7 +14,7 @@ from telegram.ext import (
     CallbackQueryHandler,
     MessageHandler,
 )
-from applicants.states.all import (
+from employers.states.all import (
     REGISTER,
     CONFIRMATION,
     REGISTER_CITY,
@@ -26,7 +26,7 @@ from applicants.states.all import (
     REGISTER_GENDER,
     REGISTER_COUNTRY,
 )
-from utils.constants import ROLE_APPLICANT
+from utils.constants import ROLE_EMPLOYER
 from utils.db import execute_query
 from utils.helpers import get_all_cities, is_valid_email
 
@@ -186,6 +186,25 @@ async def register_email(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
 async def register_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Registers the user's phone number.
+
+    This function is called after the user has entered their phone number.
+    It validates that the phone number contains only digits and has a minimum
+    length of 9 characters. If the phone number is valid, it saves the phone
+    number to the user data and prompts the user to choose their gender. If the
+    phone number is invalid, it replies with an error message and prompts the
+    user to re-enter their phone number.
+
+    If an error occurs during the process, it replies with an error message and
+    ends the conversation.
+
+    Returns:
+        int: The next state of the conversation, which is entering the gender
+            if the phone number is valid, or re-entering the phone number if
+            invalid.
+    """
+
     try:
         phone = update.message.text.strip()
 
@@ -391,6 +410,23 @@ async def register_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
 
 async def confirm_registration(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Confirms the user's registration information and saves it to the database.
+
+    If the user confirms their information, it saves the information to the
+    database and sends a welcome message with the available commands. If the user
+    decides to restart, it displays a message prompting the user to start again.
+
+    Args:
+        update (Update): The update containing the callback query.
+        context (ContextTypes.DEFAULT_TYPE): The context containing the user data.
+
+    Returns:
+        int: The next state of the conversation, which is either the end of the
+            conversation if the input is valid, or re-selecting the city if
+            invalid.
+    """
+
     try:
         query = update.callback_query
         await query.answer()
@@ -404,7 +440,7 @@ async def confirm_registration(update: Update, context: ContextTypes.DEFAULT_TYP
                 "INSERT INTO users (telegram_id, role_id, name, username, email, phone, gender, dob, country, city) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (
                     user_data["telegram_id"],
-                    ROLE_APPLICANT,
+                    ROLE_EMPLOYER,
                     f"{user_data['firstname']} {user_data['lastname']}",
                     username,
                     user_data["email"],
@@ -426,19 +462,20 @@ async def confirm_registration(update: Update, context: ContextTypes.DEFAULT_TYP
             # await start_command(update, context)
 
             keyboard = [
-                ["Browse Jobs", "Saved Jobs"],
-                ["My Profile", "My Applications"],
-                # ["Job Notifications", "Help"]
+                ["Post a Job", "My Job Posts"],
+                ["My Profile", "My Companies"],
                 ["Help"],
+                # ["My Companies", "Notifications"],
+                # ["My Profile", "Help"],
             ]
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
                 text=f"<b>Hello {user_data['firstname'].capitalize()} 👋\t Welcome to HulumJobs!</b> \n\n"
-                "<b>💼 \tBrowse Jobs</b>:\t find jobs that best fit your schedule \n\n"
-                "<b>📌 \tSaved Jobs</b>:\t your saved jobs \n\n"
+                "<b>🔊 \tPost a Job</b>:\t find the right candidates for you \n\n"
+                "<b>📑 \tMy Job posts</b>:\t view & manage your job posts \n\n"
+                "<b>🏢 \tMy Companies</b>:\t add & manage your companies \n\n"
+                # "<b>🔔 \tNotifications</b>:\t customize notifications you wanna receive \n\n"
                 "<b>👤 \tMy Profile</b>:\t manage your profile \n\n"
-                "<b>📑 \tMy Applications</b>:\t view and track your applications \n\n"
-                # "<b>🔔 \tJob Notifications</b>:\t customize notifications you wanna receive \n\n"
                 "<b>❓ \tHelp</b>:\t show help message \n\n",
                 reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True),
                 parse_mode="HTML",

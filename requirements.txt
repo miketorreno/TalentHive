@@ -12,3 +12,8 @@ pytest-asyncio
 psycopg2-binary
 pylint[spelling]
 python-telegram-bot
+
+# Optional (Web Dashboard)
+fastapi
+uvicorn[standard]
+jinja2
