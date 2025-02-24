@@ -276,7 +276,6 @@ async def edit_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         (name, telegram_id),
     )
     redis_client.delete(f"applicant:{telegram_id}")
-    print(f"\n === \n response : {response} \n === \n")
 
     keyboard = [
         [InlineKeyboardButton("Back to Profile", callback_data="applicant_profile")]
@@ -316,7 +315,6 @@ async def update_username(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         (username, telegram_id),
     )
     redis_client.delete(f"applicant:{telegram_id}")
-    print(f"\n === \n response : {response} \n === \n")
 
     keyboard = [
         [InlineKeyboardButton("Back to Profile", callback_data="applicant_profile")]
@@ -356,7 +354,6 @@ async def edit_gender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
             (query.data, telegram_id),
         )
         redis_client.delete(f"applicant:{telegram_id}")
-        print(f"\n === \n response : {response} \n === \n")
 
         keyboard = [
             [InlineKeyboardButton("Back to Profile", callback_data="applicant_profile")]
@@ -425,7 +422,6 @@ async def edit_dob(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                     (dob, telegram_id),
                 )
                 redis_client.delete(f"applicant:{telegram_id}")
-                print(f"\n === \n response : {response} \n === \n")
 
                 await update.message.reply_text(
                     text="Age updated successfully!",
@@ -478,7 +474,6 @@ async def edit_country(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
             (query.data, telegram_id),
         )
         redis_client.delete(f"applicant:{telegram_id}")
-        print(f"\n === \n response : {response} \n === \n")
 
         keyboard = [
             [InlineKeyboardButton("Back to Profile", callback_data="applicant_profile")]
@@ -523,7 +518,6 @@ async def edit_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             (query.data, telegram_id),
         )
         redis_client.delete(f"applicant:{telegram_id}")
-        print(f"\n === \n response : {response} \n === \n")
 
         keyboard = [
             [InlineKeyboardButton("Back to Profile", callback_data="applicant_profile")]
@@ -575,7 +569,6 @@ async def edit_email(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             (email, telegram_id),
         )
         redis_client.delete(f"applicant:{telegram_id}")
-        print(f"\n === \n response : {response} \n === \n")
 
         keyboard = [
             [InlineKeyboardButton("Back to Profile", callback_data="applicant_profile")]
@@ -627,7 +620,6 @@ async def edit_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             (phone, telegram_id),
         )
         redis_client.delete(f"applicant:{telegram_id}")
-        print(f"\n === \n response : {response} \n === \n")
 
         keyboard = [
             [InlineKeyboardButton("Back to Profile", callback_data="applicant_profile")]

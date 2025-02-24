@@ -6,7 +6,7 @@ from telegram import (
 )
 from telegram.ext import ContextTypes, ConversationHandler
 
-# from utils.db import execute_query
+# from applicants.handlers.job import show_job
 from applicants.states.all import REGISTER
 from utils.helpers import get_applicant
 
@@ -36,17 +36,26 @@ async def start_command(
     if not applicant:
         keyboard = [[InlineKeyboardButton("Register", callback_data="register")]]
 
-        await update.message.reply_text(
-            "<b>Hello there 👋\t Welcome to HulumJobs! </b>\n\n"
-            "Let’s get started, Please click the button below to register.",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode="HTML",
-        )
+        if update.callback_query:
+            await update.callback_query.edit_message_text(
+                "<b>Hello there 👋\t Welcome to HulumJobs! </b>\n\n"
+                "Let’s get started, Please click the button below to register.",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode="HTML",
+            )
+        else:
+            await update.message.reply_text(
+                "<b>Hello there 👋\t Welcome to HulumJobs! </b>\n\n"
+                "Let’s get started, Please click the button below to register.",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode="HTML",
+            )
         return REGISTER
 
     args = context.args
     if args and args[0].startswith("apply_"):
-        job_id = args[0].split("_")[1]
+        # job_id = args[0].split("_")[1]
+        job_id = int(args[0].split("_")[1])
         print(job_id)
         # await show_job(update, context, job_id)
     else:
@@ -56,17 +65,31 @@ async def start_command(
             # ["Job Notifications", "Help"]
             ["Help"],
         ]
-        await update.message.reply_text(
-            text=f"<b>Hello {(applicant['name'].split()[0]).capitalize()} 👋\t Welcome to HulumJobs!</b> \n\n"
-            "<b>💼 \tBrowse Jobs</b>:\t find jobs that best fit your schedule \n\n"
-            "<b>📌 \tSaved Jobs</b>:\t your saved jobs \n\n"
-            "<b>👤 \tMy Profile</b>:\t manage your profile \n\n"
-            "<b>📑 \tMy Applications</b>:\t view and track your applications \n\n"
-            # "<b>🔔 \tJob Notifications</b>:\t customize notifications you wanna receive \n\n"
-            "<b>❓ \tHelp</b>:\t show help message \n\n",
-            reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True),
-            parse_mode="HTML",
-        )
+
+        if update.callback_query:
+            await update.callback_query.edit_message_text(
+                text=f"<b>Hello {(applicant['name'].split()[0]).capitalize()} 👋\t Welcome to HulumJobs!</b> \n\n"
+                "<b>💼 \tBrowse Jobs</b>:\t find jobs that best fit your schedule \n\n"
+                "<b>📌 \tSaved Jobs</b>:\t your saved jobs \n\n"
+                "<b>👤 \tMy Profile</b>:\t manage your profile \n\n"
+                "<b>📑 \tMy Applications</b>:\t view and track your applications \n\n"
+                # "<b>🔔 \tJob Notifications</b>:\t customize notifications you wanna receive \n\n"
+                "<b>❓ \tHelp</b>:\t show help message \n\n",
+                reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True),
+                parse_mode="HTML",
+            )
+        else:
+            await update.message.reply_text(
+                text=f"<b>Hello {(applicant['name'].split()[0]).capitalize()} 👋\t Welcome to HulumJobs!</b> \n\n"
+                "<b>💼 \tBrowse Jobs</b>:\t find jobs that best fit your schedule \n\n"
+                "<b>📌 \tSaved Jobs</b>:\t your saved jobs \n\n"
+                "<b>👤 \tMy Profile</b>:\t manage your profile \n\n"
+                "<b>📑 \tMy Applications</b>:\t view and track your applications \n\n"
+                # "<b>🔔 \tJob Notifications</b>:\t customize notifications you wanna receive \n\n"
+                "<b>❓ \tHelp</b>:\t show help message \n\n",
+                reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True),
+                parse_mode="HTML",
+            )
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

@@ -415,15 +415,15 @@ async def confirm_registration(update: Update, context: ContextTypes.DEFAULT_TYP
                     user_data["city"],
                 ),
             )
-            print(f" === \n response : {response} \n ===")
 
-            await query.edit_message_text(
-                "Registered successfully \t 🎉",
-                # f"Registered successfully \t 🎉 \n\nWelcome to HulumJobs <b>{user_data['firstname'].capitalize()}</b>!",
-                parse_mode="HTML",
-            )
+            if response:
+                await query.edit_message_text(
+                    "Registered successfully \t 🎉",
+                    parse_mode="HTML",
+                )
 
             # TODO: implement a better way to handle redirect to `start`
+            # await start_command(update, context)
 
             keyboard = [
                 ["Browse Jobs", "Saved Jobs"],

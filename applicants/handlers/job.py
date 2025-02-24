@@ -1,13 +1,6 @@
-from psycopg2 import DatabaseError
-from requests.exceptions import ConnectionError as RequestsConnectionError
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
-    filters,
     ContextTypes,
-    ConversationHandler,
-    CommandHandler,
-    CallbackQueryHandler,
-    MessageHandler,
 )
 
 from applicants.handlers.general import start_command
@@ -18,8 +11,6 @@ from utils.constants import (
     TOTAL_JOBS,
     CURRENT_SAVEDJOB_INDEX,
     TOTAL_SAVEDJOBS,
-    CURRENT_APPLICATION_INDEX,
-    TOTAL_APPLICATIONS,
 )
 
 
@@ -321,127 +312,6 @@ async def next_savedjob(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await saved_jobs(update, context)
 
 
-async def my_applications(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Shows a list of jobs that the user has applied for.
-
-    Args:
-        update (Update): The Telegram update.
-        context (ContextTypes.DEFAULT_TYPE): The context of the Telegram conversation.
-    """
-
-    applicant = get_applicant(update, context)
-
-    if not applicant:
-        await start_command(update, context)
-        return
-
-    applications = execute_query(
-        "SELECT j.*, a.* FROM applications a JOIN jobs j ON a.job_id = j.job_id WHERE a.user_id = %s ORDER BY a.created_at DESC LIMIT 50",
-        (applicant["user_id"],),
-    )
-
-    if not applications:
-        if update.callback_query:
-            await update.callback_query.edit_message_text(
-                "You haven't applied for any jobs yet."
-            )
-        else:
-            await update.message.reply_text("You haven't applied for any jobs yet.")
-        return
-
-    application_list = [job for job in applications]
-    print(f"application_list: {application_list}")
-    # global CURRENT_APPLICATION_INDEX
-    application = application_list[CURRENT_APPLICATION_INDEX]
-    global TOTAL_APPLICATIONS
-    TOTAL_APPLICATIONS = len(application_list)
-    # CURRENT_APPLICATION_INDEX = 0  # Reset index when starting
-
-    application_details = (
-        f"Job Title: <b>\t{application["job_title"]}</b> \n\n"
-        f"Job Type: <b>\t{application["job_site"]} - {application["job_type"]}</b> \n\n"
-        f"Work Location: <b>\t{application["job_city"]}, {application["job_country"]}</b> \n\n"
-        f"Applicants Needed: <b>\t{application["gender_preference"]}</b> \n\n"
-        f"Salary: <b>\t{application["salary_amount"]} {application["salary_currency"]}, {application["salary_type"]}</b> \n\n"
-        f"Deadline: <b>\t{format_date(application["job_deadline"])}</b> \n\n"
-        f"<b>Description</b>: \t{application["job_description"]} \n\n"
-        f"<b>Requirements</b>: \t{application["job_requirements"]} \n\n"
-        f"<b>__________________</b>\n\n"
-        f"<b>Applied at</b>: \t{format_date(application[34])} \n\n"
-        f"<b>Application Status</b>: \t{application[33].upper()} \n\n"
-    )
-
-    # keyboard = []
-    # if CURRENT_APPLICATION_INDEX > 0:
-    #     keyboard.append([InlineKeyboardButton("Previous", callback_data='job_previous')])
-    # if CURRENT_APPLICATION_INDEX < len(job_list) - 1:
-    #     keyboard.append([InlineKeyboardButton("Next", callback_data='job_next')])
-
-    if TOTAL_APPLICATIONS > 1:
-        if CURRENT_APPLICATION_INDEX > 0:
-            keyboard = [
-                [
-                    InlineKeyboardButton(
-                        "Previous", callback_data="application_previous"
-                    ),
-                    InlineKeyboardButton("Next", callback_data="application_next"),
-                ],
-            ]
-            if TOTAL_APPLICATIONS == CURRENT_APPLICATION_INDEX + 1:
-                keyboard = [
-                    [
-                        InlineKeyboardButton(
-                            "Previous", callback_data="application_previous"
-                        ),
-                    ],
-                ]
-        else:
-            keyboard = [
-                [InlineKeyboardButton("Next", callback_data="application_next")],
-            ]
-    else:
-        keyboard = []
-
-    if update.callback_query:
-        await update.callback_query.edit_message_text(
-            text=application_details,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode="HTML",
-        )
-    else:
-        await update.message.reply_text(
-            text=application_details,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode="HTML",
-        )
-    return
-
-
-async def next_application(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Handles the callback query for navigating to the next or previous application.
-
-    Args:
-        update (Update): The Telegram update containing the callback query.
-        context (ContextTypes.DEFAULT_TYPE): The context of the Telegram conversation.
-
-    Increments or decrements the global CURRENT_APPLICATION_INDEX based on the user's input
-    and calls the my_applications function to display the updated application list.
-    """
-
-    global CURRENT_APPLICATION_INDEX
-    query = update.callback_query
-    await query.answer()
-
-    if query.data == "application_next":
-        CURRENT_APPLICATION_INDEX += 1
-    elif query.data == "application_previous":
-        CURRENT_APPLICATION_INDEX -= 1
-
-    await my_applications(update, context)
-
-
 async def save_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Saves a job to the applicant's saved jobs list.
@@ -473,12 +343,8 @@ async def save_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # checking duplicate
         duplicate = execute_query(
             "SELECT * FROM saved_jobs WHERE job_id = %s AND user_id = %s",
-            (
-                job_id,
-                applicant["user_id"],
-            ),
+            (job_id, applicant["user_id"]),
         )
-
         if duplicate:
             await context.bot.send_message(
                 chat_id=query.from_user.id,
