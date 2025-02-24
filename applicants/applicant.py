@@ -118,9 +118,9 @@ def main() -> None:
     # Callback Query Handlers
     app.add_handler(CallbackQueryHandler(next_job, pattern="^job_.*"))
     app.add_handler(CallbackQueryHandler(next_application, pattern="^application_.*"))
-    app.add_handler(CallbackQueryHandler(next_savedjob, pattern="^savedjob_.*"))
 
     app.add_handler(CallbackQueryHandler(save_job, pattern="^save_.*"))
+    app.add_handler(CallbackQueryHandler(next_savedjob, pattern="^savedjob_.*"))
 
     app.add_handler(
         CallbackQueryHandler(applicant_profile, pattern="^applicant_profile$")

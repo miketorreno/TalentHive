@@ -5,7 +5,7 @@ from telegram.ext import (
 
 from applicants.handlers.general import start_command
 from utils.db import execute_query
-from utils.helpers import format_date, get_applicant
+from utils.helpers import format_date, get_applicant, get_job
 from utils.constants import (
     CURRENT_JOB_INDEX,
     TOTAL_JOBS,
@@ -27,10 +27,7 @@ async def show_job(update: Update, context: ContextTypes.DEFAULT_TYPE, job_id: s
         None
     """
 
-    job = execute_query(
-        "SELECT * FROM jobs WHERE job_id = %s",
-        (job_id),
-    )
+    job = get_job(job_id)
 
     if not job:
         if update.callback_query:

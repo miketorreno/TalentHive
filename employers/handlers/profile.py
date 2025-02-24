@@ -28,6 +28,23 @@ from utils.helpers import get_all_cities, get_employer, is_valid_email
 
 
 async def employer_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Display the employer's profile information and provide an inline button to edit it.
+
+    If the employer's data is found, format and display the user's profile with details such as
+    name, username, gender, age, country, city, email, and phone number. An 'Edit Profile' button
+    is included as an inline option for users to edit their profile. If the message is a callback
+    query, edit the message with the employer's profile. Otherwise, send a new message with the
+    employer's profile.
+
+    If the employer is not found, initiate the start command to guide the user through the
+    registration or onboarding process.
+
+    Args:
+        update (Update): The update object containing the user's message or callback query.
+        context (ContextTypes.DEFAULT_TYPE): The context object containing user data and state.
+    """
+
     employer = get_employer(update, context)
 
     if not employer:

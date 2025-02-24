@@ -8,7 +8,7 @@ from telegram.ext import ContextTypes, ConversationHandler
 
 # from applicants.handlers.job import show_job
 from applicants.states.all import REGISTER
-from utils.helpers import get_applicant
+from utils.helpers import get_applicant, show_job
 
 
 async def start_command(
@@ -58,8 +58,7 @@ async def start_command(
     if args and args[0].startswith("apply_"):
         # job_id = args[0].split("_")[1]
         job_id = int(args[0].split("_")[1])
-        print(job_id)
-        # await show_job(update, context, job_id)
+        await show_job(update, context, job_id)
     else:
         keyboard = [
             ["Browse Jobs", "Saved Jobs"],

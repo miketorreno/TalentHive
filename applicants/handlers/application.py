@@ -614,8 +614,8 @@ async def confirm_apply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     employer_telegram_id = get_telegram_id(context.user_data["employer_id"])
     await context.bot.send_message(
         chat_id=employer_telegram_id,
-        text=f"🔔 A new application has been submitted for this job \n"
-        f"<b>Job Title:</b>\t {context.user_data["job_title"]}\n\n"
+        text=f"🔔 A new application has been submitted for this job \n\n"
+        f"<b>Job Title:</b>\t {context.user_data["job_title"]}\n"
         f"<b>Applicant:</b>\t {update.effective_user.first_name} {update.effective_user.last_name if update.effective_user.last_name else ''}\n\n",
         parse_mode="HTML",
     )

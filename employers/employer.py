@@ -10,7 +10,9 @@ from telegram.ext import (
 from telegram.error import TelegramError
 
 from employers.handlers.general import cancel_command, help_command, start_command
+from employers.handlers.company import company_creation_handler
 from employers.handlers.onboarding import onboarding_handler
+from employers.handlers.job import post_job_handler
 from employers.handlers.profile import (
     employer_profile,
     done_profile,
@@ -45,12 +47,12 @@ async def main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     #     await my_companies(update, context)
     # elif choice == "notifications":
     #     await update.message.reply_text("Notifications")
-    # elif choice == "my profile":
-    #     await employer_profile(update, context)
-    # elif choice == "help":
-    #     await help_command(update, context)
-    # else:
-    #     await update.message.reply_text("Please use the buttons below to navigate.")
+    if choice == "my profile":
+        await employer_profile(update, context)
+    elif choice == "help":
+        await help_command(update, context)
+    else:
+        await update.message.reply_text("Please use the buttons below to navigate.")
 
 
 def main():
@@ -65,14 +67,15 @@ def main():
     # app.add_handler(MessageHandler(filters.ALL, capture_group_topics))
 
     # Callback Query Handlers
+    # app.add_handler(CallbackQueryHandler(next_mycompany, pattern="^mycompany_.*"))
+
+    # app.add_handler(CallbackQueryHandler(my_job_posts, pattern="^my_job_posts$"))
+    # app.add_handler(CallbackQueryHandler(next_myjob, pattern="^myjob_.*"))
+
     # app.add_handler(
     #     CallbackQueryHandler(view_applicants, pattern="^view_applicants_.*")
     # )
     # app.add_handler(CallbackQueryHandler(next_applicant, pattern="^applicant_.*"))
-    # app.add_handler(CallbackQueryHandler(next_mycompany, pattern="^mycompany_.*"))
-    # app.add_handler(CallbackQueryHandler(next_myjob, pattern="^myjob_.*"))
-
-    # app.add_handler(CallbackQueryHandler(my_job_posts, pattern="^my_job_posts$"))
 
     app.add_handler(
         CallbackQueryHandler(employer_profile, pattern="^employer_profile$")
@@ -84,8 +87,8 @@ def main():
     #     CallbackQueryHandler(view_employer_profile, pattern="^view_employer_.*")
     # )
 
-    # app.add_handler(post_job_handler)
-    # app.add_handler(company_creation_handler)
+    app.add_handler(post_job_handler)
+    app.add_handler(company_creation_handler)
     app.add_handler(profile_handler)
     app.add_handler(onboarding_handler)
 
@@ -95,7 +98,7 @@ def main():
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("cancel", cancel_command))
-    # # app.add_handler(CommandHandler("post_a_job", post_a_job))
+    # app.add_handler(CommandHandler("post_a_job", post_a_job))
     # app.add_handler(CommandHandler("my_job_posts", my_job_posts))
     app.add_handler(CommandHandler("my_profile", employer_profile))
     # app.add_handler(CommandHandler("my_companies", my_companies))

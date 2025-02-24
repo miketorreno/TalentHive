@@ -43,7 +43,7 @@ def get_applicant(
     cached_applicant = redis_client.get(f"applicant:{telegram_id}")
 
     if not cached_applicant:
-        logger.info("Cache miss!")
+        logger.info("cache miss - applicant")
         applicant = execute_query(
             "SELECT user_id, telegram_id, role_id, name, username, email, phone, gender, dob, country, city, education, experience, cv, skills, portfolios, subscribed_alerts, preferences FROM users WHERE telegram_id = %s AND role_id = %s",
             (telegram_id, ROLE_APPLICANT),
@@ -52,7 +52,7 @@ def get_applicant(
             applicant = applicant[0]
             redis_client.set(f"applicant:{telegram_id}", json.dumps(applicant), ex=3600)
     else:
-        logger.info("Cache hit!")
+        logger.info("cache hit - applicant")
         applicant = json.loads(cached_applicant)
 
     if not applicant:
@@ -84,7 +84,7 @@ def get_employer(
     cached_employer = redis_client.get(f"employer:{telegram_id}")
 
     if not cached_employer:
-        logger.info("Cache miss!")
+        logger.info("cache miss - employer")
         employer = execute_query(
             "SELECT user_id, telegram_id, role_id, name, username, email, phone, gender, dob, country, city, education, experience, cv, skills, portfolios, subscribed_alerts, preferences FROM users WHERE telegram_id = %s AND role_id = %s",
             (telegram_id, ROLE_EMPLOYER),
@@ -93,7 +93,7 @@ def get_employer(
             employer = employer[0]
             redis_client.set(f"employer:{telegram_id}", json.dumps(employer), ex=3600)
     else:
-        logger.info("Cache hit!")
+        logger.info("cache hit - employer")
         employer = json.loads(cached_employer)
 
     if not employer:
@@ -172,6 +172,99 @@ def get_job(job_id) -> list[tuple[Any, ...]] | None:
         return None
 
     return job[0]
+
+
+async def show_job(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, job_id: str
+) -> None:
+    """
+    Shows a job with a given job_id.
+
+    Args:
+        update (Update): The Telegram update.
+        context (ContextTypes.DEFAULT_TYPE): The context of the Telegram conversation.
+        job_id (str): The job ID to show.
+
+    Returns:
+        None
+    """
+
+    job = get_job(job_id)
+
+    if not job:
+        if update.callback_query:
+            await update.callback_query.answer("Job not found.")
+        else:
+            await update.message.reply_text("Job not found.")
+        return
+
+    job_details = (
+        f"Job Title: <b>\t{job["job_title"]}</b> \n\n"
+        f"Job Type: <b>\t{job["job_site"]} - {job["job_type"]}</b> \n\n"
+        f"Work Location: <b>\t{job["job_city"]}, {job["job_country"]}</b> \n\n"
+        f"Applicants Needed: <b>\t{job["gender_preference"]}</b> \n\n"
+        f"Salary: <b>\t{job["salary_amount"]} {job["salary_currency"]}, {job["salary_type"]}</b> \n\n"
+        f"Deadline: <b>\t{format_date(job["job_deadline"])}</b> \n\n"
+        f"<b>Description</b>: \t{job["job_description"]} \n\n"
+        f"<b>Requirements</b>: \t{job["job_requirements"]} \n\n"
+    )
+
+    keyboard = [
+        [
+            InlineKeyboardButton("Save", callback_data=f"save_{job["job_id"]}"),
+            InlineKeyboardButton("Apply", callback_data=f"apply_{job["job_id"]}"),
+        ],
+    ]
+
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            text=job_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+    else:
+        await update.message.reply_text(
+            text=job_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+
+
+def get_companies(user_id):
+    """
+    Retrieves a list of companies from the database belonging to the user with the given user_id.
+
+    Args:
+        user_id (int): The ID of the user whose companies are to be retrieved.
+
+    Returns:
+        list[tuple[Any, ...]] | None: A list of tuples containing the company details, or None
+        if the user does not have any companies.
+    """
+
+    companies = execute_query("SELECT * FROM companies WHERE user_id = %s", (user_id,))
+
+    if not companies:
+        return None
+
+    return companies
+
+
+def get_categories():
+    """
+    Retrieves all categories from the database.
+
+    Returns:
+        list[tuple[int, str]] | None: A list of tuples containing the category_id and name of each category, or None
+        if no categories are found in the database.
+    """
+
+    categories = execute_query("SELECT * FROM categories")
+
+    if not categories:
+        return None
+
+    return categories
 
 
 def get_all_cities():
@@ -312,3 +405,57 @@ def convert_datetime(obj):
     if isinstance(obj, datetime.datetime):
         return obj.isoformat()  # or obj.strftime('%Y-%m-%d %H:%M:%S') for a d/t format
     raise TypeError("Type not serializable")
+
+
+def is_isalnum_w_space(s):
+    """
+    Check if a given string contains only alphanumeric characters and spaces.
+
+    Args:
+        s (str): The string to check.
+
+    Returns:
+        bool: True if the string contains only alphanumeric characters and spaces, False otherwise.
+    """
+
+    if not s:
+        return False
+
+    return all(char.isalnum() or char.isspace() for char in s)
+
+
+def is_valid_date_format(date_string):
+    # Regular expression pattern for YYYY-M-D or YYYY-MM-DD
+    pattern = r"^\d{4}-(\d{1,2})-(\d{1,2})$"
+
+    # Check if the date string matches the pattern
+    match = re.match(pattern, date_string)
+    if not match:
+        return False
+
+    # Extract month and day from the match
+    month = int(match.group(1))
+    day = int(match.group(2))
+
+    # Check if month is valid
+    if month < 1 or month > 12:
+        return False
+
+    # Check if day is valid based on the month
+    if day < 1 or day > 31:
+        return False
+
+    # Check for months with specific day limits
+    if month in {4, 6, 9, 11} and day > 30:
+        return False
+    if month == 2:
+        # Check for leap year
+        year = int(date_string[:4])
+        if (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0):
+            if day > 29:  # Leap year
+                return False
+        else:
+            if day > 28:  # Non-leap year
+                return False
+
+    return True
