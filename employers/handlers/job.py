@@ -9,17 +9,6 @@ from telegram.ext import (
     MessageHandler,
 )
 
-from utils.db import execute_query
-from utils.helpers import (
-    format_date,
-    get_all_cities,
-    get_categories,
-    get_companies,
-    get_employer,
-    is_isalnum_w_space,
-    is_valid_date_format,
-)
-
 from employers.handlers.general import start_command
 from employers.states.all import (
     SELECT_COMPANY,
@@ -40,6 +29,229 @@ from employers.states.all import (
     SALARY_CURRENCY,
     CONFIRM_JOB,
 )
+
+from utils.db import execute_query
+from utils.helpers import (
+    format_date,
+    get_all_cities,
+    get_categories,
+    get_companies,
+    get_employer,
+    get_jobs,
+    is_isalnum_w_space,
+    is_valid_date_format,
+)
+from utils.constants import (
+    CURRENT_APPLICANT_INDEX,
+    TOTAL_APPLICANTS,
+    CURRENT_MYJOB_INDEX,
+    TOTAL_MYJOBS,
+    ROLE_APPLICANT,
+)
+
+
+async def my_job_posts(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    employer = get_employer(update, context)
+
+    if not employer:
+        await start_command(update, context)
+        return
+
+    myjobs = get_jobs(employer["user_id"])
+
+    if not myjobs:
+        keyboard = [[InlineKeyboardButton("Post a Job", callback_data="post_a_job")]]
+        if update.callback_query:
+            await update.callback_query.edit_message_text(
+                "You haven't posted a job yet"
+            )
+        else:
+            await update.message.reply_text("You haven't posted a job yet")
+        return
+
+    myjobs_list = [job for job in myjobs]
+    # global CURRENT_MYJOB_INDEX
+    myjob = myjobs_list[CURRENT_MYJOB_INDEX]
+    global TOTAL_MYJOBS
+    TOTAL_MYJOBS = len(myjobs_list)
+    # CURRENT_MYJOB_INDEX = 0  # Reset index when starting
+
+    myjob_details = (
+        f"Job Title: <b>\t{myjob["job_title"]}</b> \n\n"
+        f"Job Type: <b>\t{myjob["job_site"]} - {myjob["job_type"]}</b> \n\n"
+        f"Work Location: <b>\t{myjob["job_city"]}, {myjob["job_country"]}</b> \n\n"
+        f"Applicants Needed: <b>\t{myjob["gender_preference"]}</b> \n\n"
+        f"Salary: <b>\t{myjob["salary_amount"]} {myjob["salary_currency"]}, {myjob["salary_type"]}</b> \n\n"
+        f"Deadline: <b>\t{format_date(myjob["job_deadline"])}</b> \n\n"
+        f"<b>Description</b>: \t{myjob["job_description"]} \n\n"
+        f"<b>Requirements</b>: \t{myjob["job_requirements"]} \n\n"
+    )
+
+    keyboard = []
+    if TOTAL_MYJOBS > 1:
+        if CURRENT_MYJOB_INDEX > 0:
+            keyboard = [
+                [
+                    InlineKeyboardButton("Previous", callback_data="myjob_previous"),
+                    InlineKeyboardButton("Next", callback_data="myjob_next"),
+                ],
+                [
+                    InlineKeyboardButton("Edit", callback_data="myjob_edit"),
+                    InlineKeyboardButton("Close", callback_data="myjob_close"),
+                ],
+                [
+                    InlineKeyboardButton(
+                        "View Applicants",
+                        callback_data=f"view_applicants_{myjob["job_id"]}",
+                    )
+                ],
+            ]
+            if TOTAL_MYJOBS == CURRENT_MYJOB_INDEX + 1:
+                keyboard = [
+                    [InlineKeyboardButton("Previous", callback_data="myjob_previous")],
+                    [
+                        InlineKeyboardButton("Edit", callback_data="myjob_edit"),
+                        InlineKeyboardButton("Close", callback_data="myjob_close"),
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "View Applicants",
+                            callback_data=f"view_applicants_{myjob["job_id"]}",
+                        )
+                    ],
+                ]
+        else:
+            keyboard = [
+                [InlineKeyboardButton("Next", callback_data="myjob_next")],
+                [
+                    InlineKeyboardButton("Edit", callback_data="myjob_edit"),
+                    InlineKeyboardButton("Close", callback_data="myjob_close"),
+                ],
+                [
+                    InlineKeyboardButton(
+                        "View Applicants",
+                        callback_data=f"view_applicants_{myjob["job_id"]}",
+                    )
+                ],
+            ]
+
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            text=myjob_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+    else:
+        await update.message.reply_text(
+            text=myjob_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+
+
+async def next_myjob(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global CURRENT_MYJOB_INDEX
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "myjob_next":
+        CURRENT_MYJOB_INDEX += 1
+    elif query.data == "myjob_previous":
+        CURRENT_MYJOB_INDEX -= 1
+
+    await my_job_posts(update, context)
+
+
+async def view_applicants(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    job_id = int(query.data.split("_")[-1])
+
+    applicants = execute_query(
+        "SELECT u.*, a.* FROM applications a JOIN users u ON a.user_id = u.user_id WHERE a.job_id = %s AND u.role_id = %s ORDER BY a.created_at ASC LIMIT 50",
+        (job_id, ROLE_APPLICANT),
+    )
+
+    if not applicants:
+        await context.bot.send_message(
+            chat_id=query.from_user.id,
+            text="No applicants yet",
+            parse_mode="HTML",
+        )
+        return
+
+    applicants_list = [job for job in applicants]
+    # global CURRENT_APPLICANT_INDEX
+    applicant = applicants_list[CURRENT_APPLICANT_INDEX]
+    global TOTAL_APPLICANTS
+    TOTAL_APPLICANTS = len(applicants_list)
+    # CURRENT_APPLICANT_INDEX = 0  # Reset index when starting
+
+    applicant_details = (
+        f"Name: <b>\t{applicant["name"]}</b> \n"
+        f"Email: <b>\t{applicant["email"]}</b> \n"
+        f"Phone: <b>\t{applicant["phone"]}</b> \n\n"
+        f"<b>Cover Letter:</b> \n{applicant["cover_letter"]} \n\n"
+        f"<b>CV:</b> \n{applicant["cv"]} \n\n"
+        f"<b>Portfolio:</b> \n{applicant["portfolio"]} \n\n"
+    )
+
+    keyboard = [[InlineKeyboardButton("Back to My Jobs", callback_data="my_job_posts")]]
+    if TOTAL_APPLICANTS > 1:
+        if CURRENT_APPLICANT_INDEX > 0:
+            keyboard = [
+                [
+                    InlineKeyboardButton(
+                        "Previous", callback_data="applicant_previous"
+                    ),
+                    InlineKeyboardButton("Next", callback_data="applicant_next"),
+                ],
+                [InlineKeyboardButton("Back to My Jobs", callback_data="my_job_posts")],
+            ]
+            if TOTAL_APPLICANTS == CURRENT_APPLICANT_INDEX + 1:
+                keyboard = [
+                    [
+                        InlineKeyboardButton(
+                            "Previous", callback_data="applicant_previous"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "Back to My Jobs", callback_data="my_job_posts"
+                        )
+                    ],
+                ]
+        else:
+            keyboard = [
+                [InlineKeyboardButton("Next", callback_data="applicant_next")],
+                [InlineKeyboardButton("Back to My Jobs", callback_data="my_job_posts")],
+            ]
+
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            text=applicant_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+    else:
+        await update.message.reply_text(
+            text=applicant_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+
+
+async def next_applicant(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global CURRENT_APPLICANT_INDEX
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "applicant_next":
+        CURRENT_APPLICANT_INDEX += 1
+    elif query.data == "applicant_previous":
+        CURRENT_APPLICANT_INDEX -= 1
+
+    await view_applicants(update, context)
 
 
 async def post_job_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -94,20 +306,9 @@ async def post_job_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             for company in companies
         ]
-        if len(companies) // 2 == 0:
-            keyboard = [
-                buttons[i : i + 2] for i in range(0, len(buttons), 2)
-            ]  # Group buttons into rows
-
-        if len(companies) == 1:
-            keyboard = [
-                [
-                    InlineKeyboardButton(
-                        companies[0]["name"],
-                        callback_data=f"company_{companies[0]["company_id"]}",
-                    )
-                ],
-            ]
+        keyboard = [
+            buttons[i : i + 2] for i in range(0, len(buttons), 2)
+        ]  # Group buttons into rows
 
         await update.message.reply_text(
             "<b>Let's post a new job, please select company</b>",

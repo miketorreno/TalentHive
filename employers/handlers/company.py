@@ -1,4 +1,3 @@
-import os
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     filters,
@@ -8,9 +7,6 @@ from telegram.ext import (
     CallbackQueryHandler,
     MessageHandler,
 )
-
-from utils.db import execute_query
-
 
 from employers.handlers.general import start_command
 from employers.states.all import (
@@ -23,7 +19,115 @@ from employers.states.all import (
     COMPANY_AUTH_LETTER,
     CONFIRM_COMPANY,
 )
-from utils.helpers import get_employer
+
+from utils.db import execute_query
+from utils.constants import (
+    CURRENT_COMPANY_INDEX,
+    TOTAL_COMPANIES,
+)
+
+from utils.helpers import get_companies, get_employer
+
+
+async def my_companies(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    employer = get_employer(update, context)
+
+    if not employer:
+        await start_command(update, context)
+        return
+
+    companies = get_companies(employer["user_id"])
+
+    if not companies:
+        keyboard = [
+            [InlineKeyboardButton("Add Company", callback_data="create_company")],
+        ]
+        if update.callback_query:
+            await update.callback_query.edit_message_text(
+                "You haven't created a company yet",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+            )
+        else:
+            await update.message.reply_text(
+                "You haven't created a company yet",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+            )
+        return
+
+    company_list = [job for job in companies]
+    # global CURRENT_COMPANY_INDEX
+    company = company_list[CURRENT_COMPANY_INDEX]
+    global TOTAL_COMPANIES
+    TOTAL_COMPANIES = len(company_list)
+    # CURRENT_COMPANY_INDEX = 0  # Reset index when starting
+
+    company_details = (
+        f"Name: <b>\t{company["name"]}{' \t✅' if company["verified"] else ''}</b> \n\n"
+        f"Description: <b>\t{company["description"]}</b> \n\n"
+        f"Approval status: <b>\t{company["status"]}</b> \n\n"
+        # f"Verified: <b>\t{company["verified"]}</b> \n\n"
+    )
+
+    keyboard = []
+    if TOTAL_COMPANIES > 1:
+        if CURRENT_COMPANY_INDEX > 0:
+            keyboard = [
+                [InlineKeyboardButton("Add Company", callback_data="create_company")],
+                [
+                    InlineKeyboardButton(
+                        "Previous", callback_data="mycompany_previous"
+                    ),
+                    InlineKeyboardButton("Next", callback_data="mycompany_next"),
+                ],
+            ]
+            if TOTAL_COMPANIES == CURRENT_COMPANY_INDEX + 1:
+                keyboard = [
+                    [
+                        InlineKeyboardButton(
+                            "Add Company", callback_data="create_company"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "Previous", callback_data="mycompany_previous"
+                        ),
+                    ],
+                ]
+        else:
+            keyboard = [
+                [InlineKeyboardButton("Add Company", callback_data="create_company")],
+                [InlineKeyboardButton("Next", callback_data="mycompany_next")],
+            ]
+    else:
+        keyboard = [
+            [InlineKeyboardButton("Add Company", callback_data="create_company")],
+        ]
+
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            text=company_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+    else:
+        await update.message.reply_text(
+            text=company_details,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="HTML",
+        )
+
+
+async def next_mycompany(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global CURRENT_COMPANY_INDEX
+    query = update.callback_query
+    await query.answer()  # Acknowledge the callback
+
+    if query.data == "mycompany_next":
+        CURRENT_COMPANY_INDEX += 1
+    elif query.data == "mycompany_previous":
+        CURRENT_COMPANY_INDEX -= 1
+
+    await my_companies(update, context)
 
 
 async def create_company_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
