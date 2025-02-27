@@ -3,18 +3,18 @@ CREATE TABLE users (
   telegram_id BIGINT NOT NULL,
   role_id INT NOT NULL CHECK (role_id IN (1, 2, 3)),
   first_name VARCHAR NOT NULL,
-  last_name VARCHAR NOT NULL,
+  last_name VARCHAR,
   username VARCHAR,
-  gender VARCHAR,
-  dob VARCHAR,
+  gender VARCHAR NOT NULL,
+  dob DATE NOT NULL,
   phone VARCHAR,
   email VARCHAR,
   password VARCHAR,
-  country VARCHAR,
-  city VARCHAR,
-  education VARCHAR,
-  experience VARCHAR,
+  country VARCHAR NOT NULL,
+  city VARCHAR NOT NULL,
   cv_url VARCHAR,
+  education JSON,
+  experience JSON,
   skills JSON,
   portfolios JSON,
   user_preferences JSON,
@@ -27,8 +27,8 @@ CREATE TABLE users (
 
 
 CREATE TABLE categories (
-  category_id SERIAL PRIMARY KEY,
-  parent_id INT REFERENCES categories(category_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  id SERIAL PRIMARY KEY,
+  parent_id INT REFERENCES categories(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
   category_name TEXT NOT NULL,
   category_description TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -38,8 +38,8 @@ CREATE TABLE categories (
 
 
 CREATE TABLE companies (
-  company_id SERIAL PRIMARY KEY,
-  user_id INT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
   company_type VARCHAR NOT NULL,
   startup_type VARCHAR,
   company_name TEXT NOT NULL,
@@ -58,10 +58,10 @@ CREATE TABLE companies (
 
 
 CREATE TABLE jobs (
-  job_id SERIAL PRIMARY KEY,
-  company_id INT NOT NULL REFERENCES companies(company_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-  user_id INT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-  category_id INT NOT NULL REFERENCES categories(category_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  id SERIAL PRIMARY KEY,
+  company_id INT NOT NULL REFERENCES companies(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  category_id INT NOT NULL REFERENCES categories(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
   job_title VARCHAR NOT NULL,
   job_type VARCHAR NOT NULL,
   job_site VARCHAR NOT NULL,
@@ -69,7 +69,7 @@ CREATE TABLE jobs (
   education_qualification VARCHAR NOT NULL,
   experience_level VARCHAR NOT NULL,
   gender_preference VARCHAR,
-  job_deadline DATE,
+  job_deadline DATE NOT NULL,
   job_vacancies VARCHAR,
   job_description TEXT,
   job_requirements TEXT,
@@ -91,8 +91,8 @@ CREATE TABLE jobs (
 
 CREATE TABLE applications (
   application_id SERIAL PRIMARY KEY,
-  job_id INT NOT NULL REFERENCES jobs(job_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-  user_id INT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  job_id INT NOT NULL REFERENCES jobs(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
   cover_letter TEXT,
   resume VARCHAR,
   portfolio JSON,
@@ -106,13 +106,20 @@ CREATE TABLE applications (
 
 CREATE TABLE saved_jobs (
   saved_job_id SERIAL PRIMARY KEY,
-  job_id INT NOT NULL REFERENCES jobs(job_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-  user_id INT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  job_id INT NOT NULL REFERENCES jobs(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP,
   deleted_at TIMESTAMP
 );
 
+CREATE TABLE skills (
+  id SERIAL PRIMARY KEY,
+  skill_name TEXT UNIQUE NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP,
+  deleted_at TIMESTAMP
+);
 
 
 
@@ -146,7 +153,7 @@ CREATE TABLE saved_jobs (
   );
   CREATE TABLE notifications (
     notification_id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
     message TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP,
@@ -154,8 +161,8 @@ CREATE TABLE saved_jobs (
   );
   CREATE TABLE messages (
     message_id SERIAL PRIMARY KEY,
-    sender_id INT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    receiver_id INT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    sender_id INT NOT NULL REFERENCES users(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    receiver_id INT NOT NULL REFERENCES users(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
     message TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP,
@@ -163,7 +170,7 @@ CREATE TABLE saved_jobs (
   );
   CREATE TABLE feedback (
     feedback_id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
     message TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP,
@@ -171,7 +178,7 @@ CREATE TABLE saved_jobs (
   );
   CREATE TABLE reports (
     report_id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
     message TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP,
@@ -179,7 +186,7 @@ CREATE TABLE saved_jobs (
   );
   CREATE TABLE settings (
     setting_id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
     key VARCHAR NOT NULL,
     value VARCHAR NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

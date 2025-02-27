@@ -8,11 +8,13 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     SmallInteger,
+    BigInteger,
     String,
     Text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.ext.asyncio import AsyncAttrs
 
 
 class Base(DeclarativeBase):
@@ -23,39 +25,37 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    telegram_id: Mapped[str] = mapped_column(Integer, nullable=False)
-    role_id: Mapped[int] = mapped_column(
-        int, check="role_id in (1, 2, 3)", nullable=False
-    )
+    telegram_id: Mapped[str] = mapped_column(BigInteger, nullable=False)
+    role_id: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     first_name: Mapped[str] = mapped_column(String, nullable=False)
-    last_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    username: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    gender: Mapped[str] = mapped_column(
-        String, check="gender in ('Male', 'Female', 'Other')", nullable=False
-    )
+    last_name: Mapped[Optional[str]] = mapped_column(String)
+    username: Mapped[Optional[str]] = mapped_column(String)
+    gender: Mapped[str] = mapped_column(String, nullable=False)
     dob: Mapped[date] = mapped_column(Date, nullable=False)
-    phone: Mapped[str] = mapped_column(String, nullable=False)
-    email: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    password: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    phone: Mapped[Optional[str]] = mapped_column(String)
+    email: Mapped[Optional[str]] = mapped_column(String)
+    password: Mapped[Optional[str]] = mapped_column(String)
     country: Mapped[str] = mapped_column(String, nullable=False)
     city: Mapped[str] = mapped_column(String, nullable=False)
-    cv_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    education: Mapped[Optional[dict]] = mapped_column(JSONB, index=True, nullable=True)
-    experience: Mapped[Optional[dict]] = mapped_column(JSONB, index=True, nullable=True)
-    skills: Mapped[Optional[dict]] = mapped_column(JSONB, index=True, nullable=True)
-    portfolios: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
-    user_preferences: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
-    subscribed_alerts: Mapped[Optional[list]] = mapped_column(
-        ARRAY(String), nullable=True
-    )
-    verified_user: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+    cv_url: Mapped[Optional[str]] = mapped_column(String)
+    education: Mapped[Optional[dict]] = mapped_column(JSONB, index=True)
+    experience: Mapped[Optional[dict]] = mapped_column(JSONB, index=True)
+    expertise: Mapped[Optional[dict]] = mapped_column(JSONB, index=True)
+    portfolios: Mapped[Optional[dict]] = mapped_column(JSONB)
+    user_preferences: Mapped[Optional[dict]] = mapped_column(JSONB)
+    subscribed_alerts: Mapped[Optional[list]] = mapped_column(ARRAY(String))
+    verified_user: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
-    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     company: Mapped[Optional["Company"]] = relationship(back_populates="employees")
     jobs: Mapped[List["Job"]] = relationship(back_populates="employer")
     applications: Mapped[List["Application"]] = relationship(back_populates="candidate")
+    saved_jobs: Mapped[List["SavedJob"]] = relationship(back_populates="user")
+    skills: Mapped[List["Skill"]] = relationship(
+        secondary="user_skills", back_populates="users"
+    )
 
 
 class Category(Base):
@@ -68,10 +68,10 @@ class Category(Base):
         nullable=True,
     )
     category_name: Mapped[str] = mapped_column(String, nullable=False)
-    category_description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    category_description: Mapped[Optional[str]] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
-    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     jobs: Mapped[List["Job"]] = relationship(back_populates="category")
 
@@ -85,20 +85,19 @@ class Company(Base):
         ForeignKey("users.id", onupdate="RESTRICT", ondelete="RESTRICT"),
         nullable=False,
     )
-    company_type: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    startup_type: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    company_type: Mapped[Optional[str]] = mapped_column(String)
+    startup_type: Mapped[Optional[str]] = mapped_column(String)
     company_name: Mapped[str] = mapped_column(String, nullable=False)
-    company_description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    trade_license: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    employer_photo: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    company_website: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    company_industry: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    company_status: Mapped[Optional[str]] = mapped_column(
+    company_description: Mapped[Optional[str]] = mapped_column(Text)
+    trade_license: Mapped[Optional[str]] = mapped_column(String)
+    employer_photo: Mapped[Optional[str]] = mapped_column(String)
+    company_website: Mapped[Optional[str]] = mapped_column(String)
+    company_industry: Mapped[Optional[str]] = mapped_column(String)
+    company_status: Mapped[str] = mapped_column(
         String,
-        check="company_status in ('pending','approved', 'rejected')",
         default="pending",
     )
-    verified_company: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+    verified_company: Mapped[bool] = mapped_column(Boolean, default=False)
 
     employees: Mapped[List["User"]] = relationship(back_populates="company")
     jobs: Mapped[List["Job"]] = relationship(back_populates="company")
@@ -129,31 +128,32 @@ class Job(Base):
     job_sector: Mapped[str] = mapped_column(String, nullable=False)
     education_qualification: Mapped[str] = mapped_column(String, nullable=False)
     experience_level: Mapped[str] = mapped_column(String, nullable=False)
-    gender_preference: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    gender_preference: Mapped[Optional[str]] = mapped_column(String)
     job_deadline: Mapped[date] = mapped_column(Date, nullable=False)
-    job_vacancies: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=False)
+    job_vacancies: Mapped[Optional[int]] = mapped_column(SmallInteger)
     job_description: Mapped[str] = mapped_column(Text, nullable=False)
-    job_requirements: Mapped[str] = mapped_column(Text, nullable=False)
+    job_requirements: Mapped[str] = mapped_column(Text)
     job_city: Mapped[str] = mapped_column(String, nullable=False)
     job_country: Mapped[str] = mapped_column(String, nullable=False)
-    salary_type: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    salary_currency: Mapped[str] = mapped_column(String, nullable=False)
-    salary_amount: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    salary_range: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    salary_type: Mapped[Optional[str]] = mapped_column(String)
+    salary_currency: Mapped[str] = mapped_column(String)
+    salary_amount: Mapped[Optional[int]] = mapped_column(Integer)
+    salary_range: Mapped[Optional[dict]] = mapped_column(JSONB)
     job_status: Mapped[Optional[str]] = mapped_column(
         String,
-        check="job_status in ('pending', 'approved', 'rejected')",
         default="pending",
     )
-    job_promoted: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
-    job_closed: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+    job_promoted: Mapped[bool] = mapped_column(Boolean, default=False)
+    job_closed: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
-    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
-    company: Mapped[Optional["Company"]] = relationship(back_populates="jobs")
-    employer: Mapped[Optional["User"]] = relationship(back_populates="jobs")
+    category: Mapped["Category"] = relationship(back_populates="jobs")
+    company: Mapped["Company"] = relationship(back_populates="jobs")
+    employer: Mapped["User"] = relationship(back_populates="jobs")
     applications: Mapped[List["Application"]] = relationship(back_populates="job")
+    saved_jobs: Mapped[List["SavedJob"]] = relationship(back_populates="job")
     skills: Mapped[List["Skill"]] = relationship(
         secondary="job_skills", back_populates="jobs"
     )
@@ -163,28 +163,27 @@ class Application(Base):
     __tablename__ = "applications"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    user_id: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey("users.id", onupdate="RESTRICT", ondelete="RESTRICT"),
-        nullable=False,
-    )
     job_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("jobs.id", onupdate="RESTRICT", ondelete="RESTRICT"),
         nullable=False,
     )
-    cover_letter: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    resume: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    portfolio: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
-    application_note: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    application_status: Mapped[Optional[str]] = mapped_column(
+    user_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("users.id", onupdate="RESTRICT", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    cover_letter: Mapped[Optional[str]] = mapped_column(Text)
+    resume: Mapped[Optional[str]] = mapped_column(String)
+    portfolio: Mapped[Optional[dict]] = mapped_column(JSONB)
+    application_note: Mapped[Optional[str]] = mapped_column(String)
+    application_status: Mapped[str] = mapped_column(
         String,
-        check="application_status in ('applied', 'seen', 'shortlisted', 'approved', 'rejected')",
         default="applied",
     )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
-    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     job: Mapped["Job"] = relationship(back_populates="applications")
     candidate: Mapped["User"] = relationship(back_populates="applications")
@@ -205,8 +204,8 @@ class SavedJob(Base):
         nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
-    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     job: Mapped["Job"] = relationship(back_populates="saved_jobs")
     user: Mapped["User"] = relationship(back_populates="saved_jobs")
@@ -216,7 +215,10 @@ class Skill(Base):
     __tablename__ = "skills"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    skill_name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     users: Mapped[List["User"]] = relationship(
         secondary="user_skills", back_populates="skills"
