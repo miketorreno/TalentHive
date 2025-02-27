@@ -4,6 +4,7 @@ torch
 openai
 pytest
 pymongo
+pydantic
 # psycopg2
 pytest-mock
 transformers
@@ -12,6 +13,12 @@ pytest-asyncio
 psycopg2-binary
 pylint[spelling]
 python-telegram-bot
+
+# Async Database
+sqlalchemy[asyncio]
+alembic
+asyncpg  
+aiosqlite  
 
 # Optional (Web Dashboard)
 fastapi

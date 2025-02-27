@@ -11,6 +11,7 @@ from telegram.ext import (
 )
 from utils.constants import (
     CITIES,
+    GROUP_TOPIC_NEW_EMPLOYER_REGISTRATION_ID,
     ROLE_APPLICANT,
     GROUP_TOPIC_NEW_APPLICANT_REGISTRATION_ID,
     ROLE_EMPLOYER,
@@ -250,6 +251,15 @@ def get_companies(user_id):
     return companies
 
 
+def get_jobs(user_id):
+    jobs = execute_query("SELECT * FROM jobs WHERE user_id = %s", (user_id,))
+
+    if not jobs:
+        return None
+
+    return jobs
+
+
 def get_categories():
     """
     Retrieves all categories from the database.
@@ -343,8 +353,46 @@ async def view_applicant_profile(
     else:
         await context.bot.send_message(
             chat_id=os.getenv("HULUMJOBS_GROUP_ID"),
-            text=f"<b>User Profile</b>\n\n"
+            text="<b>User Profile</b>\n\n"
             f"<b>Job Seeker</b>\n\n"
+            f"<b>👤 \tName</b>: \t{(user["name"].split()[0]).capitalize()} {(user["name"].split()[1]).capitalize() if len(user["name"].split()) > 1 else ''} \n\n"
+            f"<b>\t&#64; \t\tUsername</b>: \t{user["username"]} \n\n"
+            f"<b>👫 \tGender</b>: \t{user["gender"]} \n\n"
+            f"<b>🎂 \tAge</b>: \t{user["dob"]} \n\n"
+            f"<b>🌐 \tCountry</b>: \t{user["country"]} \n\n"
+            f"<b>🏙️ \tCity</b>: \t{user["city"]} \n\n"
+            f"<b>📧 \tEmail</b>: \t{user["email"]} \n\n"
+            f"<b>📞 \tPhone</b>: \t{user["phone"]} \n\n",
+            parse_mode="HTML",
+            message_thread_id=topic_id,
+        )
+
+
+async def view_employer_profile(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    topic_id=GROUP_TOPIC_NEW_EMPLOYER_REGISTRATION_ID,
+):
+    """
+    Handle the 'View Profile' button and display user details on the group.
+    """
+
+    query = update.callback_query
+    await query.answer()
+    telegram_id = int(query.data.split("_")[-1])
+    user = get_user(telegram_id, ROLE_EMPLOYER)
+
+    if not user:
+        await context.bot.send_message(
+            chat_id=os.getenv("HULUMJOBS_GROUP_ID"),
+            text="User not found.",
+            parse_mode="HTML",
+        )
+    else:
+        await context.bot.send_message(
+            chat_id=os.getenv("HULUMJOBS_GROUP_ID"),
+            text="<b>User Profile</b>\n\n"
+            f"<b>Employer</b>\n\n"
             f"<b>👤 \tName</b>: \t{(user["name"].split()[0]).capitalize()} {(user["name"].split()[1]).capitalize() if len(user["name"].split()) > 1 else ''} \n\n"
             f"<b>\t&#64; \t\tUsername</b>: \t{user["username"]} \n\n"
             f"<b>👫 \tGender</b>: \t{user["gender"]} \n\n"

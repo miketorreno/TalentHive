@@ -80,6 +80,7 @@ async def my_applications(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # if CURRENT_APPLICATION_INDEX < len(job_list) - 1:
     #     keyboard.append([InlineKeyboardButton("Next", callback_data='job_next')])
 
+    keyboard = []
     if TOTAL_APPLICATIONS > 1:
         if CURRENT_APPLICATION_INDEX > 0:
             keyboard = [
@@ -102,8 +103,6 @@ async def my_applications(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard = [
                 [InlineKeyboardButton("Next", callback_data="application_next")],
             ]
-    else:
-        keyboard = []
 
     if update.callback_query:
         await update.callback_query.edit_message_text(

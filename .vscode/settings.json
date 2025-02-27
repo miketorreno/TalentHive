@@ -3,5 +3,6 @@
   // "cSpell.words": ["jobseeker", "jobseekers"],
   // "codeium.enableCodeLens": false,
   "editor.formatOnSave": true,
-  "editor.defaultFormatter": "ms-python.black-formatter"
+  "editor.defaultFormatter": "ms-python.black-formatter",
+  "codeium.enableCodeLens": true
 }
