@@ -1,4 +1,5 @@
-from pydantic import BaseSettings, PostgresDsn, RedisDsn
+from pydantic_settings import BaseSettings
+from pydantic import PostgresDsn, RedisDsn
 
 
 class Settings(BaseSettings):
