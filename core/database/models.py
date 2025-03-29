@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from enum import IntEnum
 from typing import List, Optional
 from sqlalchemy import (
     ARRAY,
@@ -17,8 +18,16 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.ext.asyncio import AsyncAttrs
 
 
-class Base(DeclarativeBase):
-    pass
+class Base(AsyncAttrs, DeclarativeBase):
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+
+class UserRole(str, IntEnum):
+    APPLICANT = 1
+    EMPLOYER = 2
+    ADMIN = 3
 
 
 class User(Base):
@@ -26,7 +35,7 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     telegram_id: Mapped[str] = mapped_column(BigInteger, nullable=False)
-    role_id: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    role_id: Mapped[UserRole]
     first_name: Mapped[str] = mapped_column(String, nullable=False)
     last_name: Mapped[Optional[str]] = mapped_column(String)
     username: Mapped[Optional[str]] = mapped_column(String)
@@ -45,9 +54,9 @@ class User(Base):
     user_preferences: Mapped[Optional[dict]] = mapped_column(JSONB)
     subscribed_alerts: Mapped[Optional[list]] = mapped_column(ARRAY(String))
     verified_user: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
-    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    # created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    # updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    # deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     company: Mapped[Optional["Company"]] = relationship(back_populates="employees")
     jobs: Mapped[List["Job"]] = relationship(back_populates="employer")
@@ -69,9 +78,9 @@ class Category(Base):
     )
     category_name: Mapped[str] = mapped_column(String, nullable=False)
     category_description: Mapped[Optional[str]] = mapped_column(String)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
-    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    # created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    # updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    # deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     jobs: Mapped[List["Job"]] = relationship(back_populates="category")
 
@@ -98,6 +107,9 @@ class Company(Base):
         default="pending",
     )
     verified_company: Mapped[bool] = mapped_column(Boolean, default=False)
+    # created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    # updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    # deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     employees: Mapped[List["User"]] = relationship(back_populates="company")
     jobs: Mapped[List["Job"]] = relationship(back_populates="company")
@@ -145,9 +157,9 @@ class Job(Base):
     )
     job_promoted: Mapped[bool] = mapped_column(Boolean, default=False)
     job_closed: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
-    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    # created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    # updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    # deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     category: Mapped["Category"] = relationship(back_populates="jobs")
     company: Mapped["Company"] = relationship(back_populates="jobs")
@@ -181,9 +193,9 @@ class Application(Base):
         String,
         default="applied",
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
-    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    # created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    # updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    # deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     job: Mapped["Job"] = relationship(back_populates="applications")
     candidate: Mapped["User"] = relationship(back_populates="applications")
@@ -203,9 +215,9 @@ class SavedJob(Base):
         ForeignKey("users.id", onupdate="RESTRICT", ondelete="RESTRICT"),
         nullable=False,
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
-    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    # created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    # updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    # deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     job: Mapped["Job"] = relationship(back_populates="saved_jobs")
     user: Mapped["User"] = relationship(back_populates="saved_jobs")
@@ -216,9 +228,9 @@ class Skill(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     skill_name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
-    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    # created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    # updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    # deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     users: Mapped[List["User"]] = relationship(
         secondary="user_skills", back_populates="skills"

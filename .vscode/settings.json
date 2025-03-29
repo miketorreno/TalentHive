@@ -4,5 +4,8 @@
   // "codeium.enableCodeLens": false,
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "ms-python.black-formatter",
-  "codeium.enableCodeLens": true
+  "codeium.enableCodeLens": true,
+  "[sql]": {
+    "editor.defaultFormatter": "inferrinizzard.prettier-sql-vscode"
+  }
 }

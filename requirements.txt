@@ -12,7 +12,9 @@ sentencepiece
 pytest-asyncio
 psycopg2-binary
 pylint[spelling]
+pydantic-settings
 python-telegram-bot
+dependency-injector
 
 # Async Database
 sqlalchemy[asyncio]
